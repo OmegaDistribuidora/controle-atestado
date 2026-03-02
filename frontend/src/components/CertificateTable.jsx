@@ -1,4 +1,5 @@
 import { Eye, PenLine, Trash2 } from "lucide-react";
+import { formatCpf } from "../services/cpf";
 import { formatDate, formatDateTime } from "../services/date";
 
 export default function CertificateTable({ items, onEdit, onDetails, onDelete }) {
@@ -27,7 +28,7 @@ export default function CertificateTable({ items, onEdit, onDetails, onDelete })
             <tr key={item.id}>
               <td>{formatDateTime(item.registrationDate)}</td>
               <td>{item.employeeName}</td>
-              <td>{item.cpf}</td>
+              <td>{formatCpf(item.cpf)}</td>
               <td>{item.cid || "-"}</td>
               <td>{formatDate(item.startDate)}</td>
               <td>{formatDate(item.endDate)}</td>
@@ -36,13 +37,13 @@ export default function CertificateTable({ items, onEdit, onDetails, onDelete })
               <td>
                 <div className="action-buttons">
                   <button className="icon-btn" title="Ver detalhes" onClick={() => onDetails(item)}>
-                    <Eye size={16} />
+                    <Eye size={14} />
                   </button>
                   <button className="icon-btn" title="Editar atestado" onClick={() => onEdit(item)}>
-                    <PenLine size={16} />
+                    <PenLine size={14} />
                   </button>
                   <button className="icon-btn danger-btn" title="Excluir atestado" onClick={() => onDelete(item)}>
-                    <Trash2 size={16} />
+                    <Trash2 size={14} />
                   </button>
                 </div>
               </td>

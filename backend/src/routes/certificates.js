@@ -32,7 +32,9 @@ function runUpload(req, res, next) {
 function normalizeBody(rawBody) {
   return {
     employeeName: (rawBody.employeeName || "").trim(),
-    cpf: (rawBody.cpf || "").trim(),
+    cpf: String(rawBody.cpf || "")
+      .replace(/\D/g, "")
+      .slice(0, 11),
     startDate: (rawBody.startDate || "").trim(),
     endDate: rawBody.endDate ? String(rawBody.endDate).trim() : null,
     cid: rawBody.cid ? String(rawBody.cid).trim() : null,

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { X } from "lucide-react";
 import { apiForm } from "../services/api";
+import { formatCpf, normalizeCpf } from "../services/cpf";
 import { calculateAfastamentoInfo } from "../services/date";
 
 const INITIAL_STATE = {
@@ -30,7 +31,7 @@ export default function CertificateFormModal({ open, onClose, token, initialData
     if (initialData) {
       setForm({
         employeeName: initialData.employeeName || "",
-        cpf: initialData.cpf || "",
+        cpf: formatCpf(initialData.cpf || ""),
         startDate: toInputDate(initialData.startDate),
         endDate: toInputDate(initialData.endDate),
         cid: initialData.cid || "",
@@ -70,7 +71,7 @@ export default function CertificateFormModal({ open, onClose, token, initialData
 
     const formData = new FormData();
     formData.append("employeeName", form.employeeName.trim());
-    formData.append("cpf", form.cpf.trim());
+    formData.append("cpf", normalizeCpf(form.cpf));
     formData.append("startDate", form.startDate);
     formData.append("endDate", form.endDate || "");
     formData.append("cid", form.cid.trim());
@@ -137,7 +138,12 @@ export default function CertificateFormModal({ open, onClose, token, initialData
 
           <label>
             CPF *
-            <input type="text" value={form.cpf} onChange={(e) => setForm((old) => ({ ...old, cpf: e.target.value }))} />
+            <input
+              type="text"
+              value={form.cpf}
+              placeholder="000.000.000-00"
+              onChange={(e) => setForm((old) => ({ ...old, cpf: formatCpf(e.target.value) }))}
+            />
           </label>
 
           <label>

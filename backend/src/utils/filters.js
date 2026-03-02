@@ -47,10 +47,14 @@ function buildCertificatesWhere(query) {
   const where = {};
 
   if (query.search) {
+    const search = String(query.search);
+    const cpfDigits = search.replace(/\D/g, "");
+    const cpfFilters = cpfDigits ? [{ cpf: { contains: cpfDigits } }] : [];
+
     where.OR = [
-      { employeeName: { contains: query.search, mode: "insensitive" } },
-      { cpf: { contains: query.search, mode: "insensitive" } },
-      { cid: { contains: query.search, mode: "insensitive" } },
+      { employeeName: { contains: search, mode: "insensitive" } },
+      ...cpfFilters,
+      { cid: { contains: search, mode: "insensitive" } },
     ];
   }
 

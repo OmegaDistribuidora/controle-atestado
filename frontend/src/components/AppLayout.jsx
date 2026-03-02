@@ -26,14 +26,14 @@ export default function AppLayout() {
             const Icon = item.icon;
             return (
               <NavLink key={item.to} to={item.to} end={item.to === "/"} className="nav-item">
-                <Icon size={18} />
+                <Icon size={15} />
                 <span>{item.label}</span>
               </NavLink>
             );
           })}
           {user?.role === "ADMIN" && (
             <NavLink to="/usuarios" className="nav-item">
-              <Users size={18} />
+              <Users size={15} />
               <span>Usuários</span>
             </NavLink>
           )}

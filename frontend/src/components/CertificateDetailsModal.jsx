@@ -1,27 +1,22 @@
 import { ExternalLink, X } from "lucide-react";
 import { apiBlob } from "../services/api";
+import { formatCpf } from "../services/cpf";
 import { formatDate, formatDateTime } from "../services/date";
 
 export default function CertificateDetailsModal({ open, onClose, token, item }) {
   if (!open || !item) return null;
 
   async function handleOpenAttachment(filename) {
-    const previewWindow = window.open("", "_blank", "noopener,noreferrer");
-
     try {
       const safeName = encodeURIComponent(filename);
       const blob = await apiBlob(`/certificates/${item.id}/attachments/${safeName}`, { token });
       const url = URL.createObjectURL(blob);
-      if (previewWindow) {
-        previewWindow.location.href = url;
-      } else {
-        window.open(url, "_blank", "noopener,noreferrer");
+      const opened = window.open(url, "_blank", "noopener,noreferrer");
+      if (!opened) {
+        window.location.href = url;
       }
       window.setTimeout(() => URL.revokeObjectURL(url), 60000);
     } catch (error) {
-      if (previewWindow) {
-        previewWindow.close();
-      }
       window.alert(error.message);
     }
   }
@@ -38,7 +33,7 @@ export default function CertificateDetailsModal({ open, onClose, token, item }) 
 
         <div className="details-grid">
           <p><strong>Funcionário:</strong> {item.employeeName}</p>
-          <p><strong>CPF:</strong> {item.cpf}</p>
+          <p><strong>CPF:</strong> {formatCpf(item.cpf)}</p>
           <p><strong>CID:</strong> {item.cid || "-"}</p>
           <p><strong>Data inicial:</strong> {formatDate(item.startDate)}</p>
           <p><strong>Data final:</strong> {formatDate(item.endDate)}</p>
