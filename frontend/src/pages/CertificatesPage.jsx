@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import CertificateDetailsModal from "../components/CertificateDetailsModal";
 import CertificateFormModal from "../components/CertificateFormModal";
 import CertificateTable from "../components/CertificateTable";
 import FilterBar from "../components/FilterBar";
@@ -25,6 +26,8 @@ export default function CertificatesPage() {
   const [error, setError] = useState("");
   const [modalOpen, setModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
+  const [detailsOpen, setDetailsOpen] = useState(false);
+  const [detailsItem, setDetailsItem] = useState(null);
   const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
@@ -52,6 +55,18 @@ export default function CertificatesPage() {
 
   function handleSaved() {
     setRefreshKey((old) => old + 1);
+  }
+
+  async function handleDelete(item) {
+    const confirmed = window.confirm(`Deseja excluir o atestado de ${item.employeeName}?`);
+    if (!confirmed) return;
+
+    try {
+      await apiJson(`/certificates/${item.id}`, { token, method: "DELETE" });
+      setRefreshKey((old) => old + 1);
+    } catch (deleteError) {
+      setError(deleteError.message);
+    }
   }
 
   return (
@@ -87,10 +102,22 @@ export default function CertificatesPage() {
           }}
         />
 
-        {loading ? <p>Carregando...</p> : <CertificateTable items={items} onEdit={(item) => {
-          setEditingItem(item);
-          setModalOpen(true);
-        }} />}
+        {loading ? (
+          <p>Carregando...</p>
+        ) : (
+          <CertificateTable
+            items={items}
+            onEdit={(item) => {
+              setEditingItem(item);
+              setModalOpen(true);
+            }}
+            onDetails={(item) => {
+              setDetailsItem(item);
+              setDetailsOpen(true);
+            }}
+            onDelete={handleDelete}
+          />
+        )}
 
         <div className="pagination-row">
           <span>
@@ -115,6 +142,12 @@ export default function CertificatesPage() {
         token={token}
         initialData={editingItem}
         onSaved={handleSaved}
+      />
+      <CertificateDetailsModal
+        open={detailsOpen}
+        onClose={() => setDetailsOpen(false)}
+        token={token}
+        item={detailsItem}
       />
     </section>
   );

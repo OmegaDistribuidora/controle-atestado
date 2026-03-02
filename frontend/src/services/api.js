@@ -31,6 +31,27 @@ async function request(path, { token, headers = {}, body, method = "GET" } = {})
   return payload;
 }
 
+export async function apiBlob(path, { token, method = "GET" } = {}) {
+  const response = await fetch(`${API_BASE}${path}`, {
+    method,
+    headers: {
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+  });
+
+  if (!response.ok) {
+    let message = "Erro inesperado";
+    const contentType = response.headers.get("content-type") || "";
+    if (contentType.includes("application/json")) {
+      const payload = await response.json();
+      message = payload?.message || message;
+    }
+    throw new Error(message);
+  }
+
+  return response.blob();
+}
+
 export function apiJson(path, { token, method = "GET", data } = {}) {
   return request(path, {
     token,

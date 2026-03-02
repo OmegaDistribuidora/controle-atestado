@@ -1,9 +1,12 @@
 const express = require("express");
+const fs = require("fs");
+const path = require("path");
 const { z } = require("zod");
 
 const prisma = require("../db");
 const { authRequired } = require("../middleware");
 const { upload, deleteFilesByName } = require("../upload");
+const { attachmentsDir } = require("../config");
 const { normalizeAfastamentoDates, nowInFortaleza } = require("../utils/date");
 const { buildCertificatesWhere, buildPagination } = require("../utils/filters");
 const { serializeCertificate } = require("../utils/serializers");
@@ -81,6 +84,38 @@ router.get("/:id", authRequired, async (req, res) => {
   }
 
   return res.json({ item: serializeCertificate(certificate) });
+});
+
+router.get("/:id/attachments/:filename", authRequired, async (req, res) => {
+  const id = Number(req.params.id);
+  const filename = decodeURIComponent(req.params.filename || "");
+
+  if (Number.isNaN(id)) {
+    return res.status(400).json({ message: "ID inválido." });
+  }
+
+  if (!filename || filename.includes("..") || filename.includes("/") || filename.includes("\\")) {
+    return res.status(400).json({ message: "Nome de anexo inválido." });
+  }
+
+  const attachment = await prisma.attachment.findFirst({
+    where: {
+      certificateId: id,
+      filename,
+    },
+  });
+
+  if (!attachment) {
+    return res.status(404).json({ message: "Anexo não encontrado para este atestado." });
+  }
+
+  const fullPath = path.join(attachmentsDir, filename);
+  if (!fs.existsSync(fullPath)) {
+    return res.status(404).json({ message: "Arquivo de anexo não encontrado no servidor." });
+  }
+
+  res.setHeader("Content-Disposition", `inline; filename="${path.basename(filename)}"`);
+  return res.sendFile(fullPath);
 });
 
 router.post("/", authRequired, runUpload, async (req, res) => {
@@ -226,6 +261,27 @@ router.put("/:id", authRequired, runUpload, async (req, res) => {
     deleteFilesByName(uploadedFilenames);
     return res.status(500).json({ message: "Erro ao editar atestado." });
   }
+});
+
+router.delete("/:id", authRequired, async (req, res) => {
+  const id = Number(req.params.id);
+  if (Number.isNaN(id)) {
+    return res.status(400).json({ message: "ID inválido." });
+  }
+
+  const existing = await prisma.certificate.findUnique({
+    where: { id },
+    include: { attachments: true },
+  });
+
+  if (!existing) {
+    return res.status(404).json({ message: "Atestado não encontrado." });
+  }
+
+  await prisma.certificate.delete({ where: { id } });
+  deleteFilesByName(existing.attachments.map((item) => item.filename));
+
+  return res.json({ message: "Atestado excluído com sucesso." });
 });
 
 module.exports = router;

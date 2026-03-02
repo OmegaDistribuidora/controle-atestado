@@ -292,6 +292,17 @@ p {
   place-items: center;
 }
 
+.action-buttons {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.danger-btn {
+  border-color: rgba(255, 107, 120, 0.5);
+  color: #ff8f9b;
+}
+
 .primary-btn:disabled,
 .ghost-btn:disabled {
   opacity: 0.6;
@@ -364,6 +375,17 @@ p {
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
+}
+
+.details-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.5rem 1rem;
+}
+
+.details-files .ghost-btn {
+  max-width: 100%;
+  justify-content: flex-start;
 }
 
 .empty-message {
@@ -455,7 +477,8 @@ p {
   .kpi-grid,
   .filter-grid,
   .inline-form,
-  .year-grid {
+  .year-grid,
+  .details-grid {
     grid-template-columns: 1fr;
   }
 

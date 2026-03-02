@@ -1,7 +1,7 @@
-import { PenLine } from "lucide-react";
+import { Eye, PenLine, Trash2 } from "lucide-react";
 import { formatDate, formatDateTime } from "../services/date";
 
-export default function CertificateTable({ items, onEdit }) {
+export default function CertificateTable({ items, onEdit, onDetails, onDelete }) {
   if (!items.length) {
     return <p className="empty-message">Nenhum atestado encontrado para os filtros atuais.</p>;
   }
@@ -34,9 +34,17 @@ export default function CertificateTable({ items, onEdit }) {
               <td>{item.totalDays}</td>
               <td>{item.attachments?.length || 0}</td>
               <td>
-                <button className="icon-btn" title="Editar atestado" onClick={() => onEdit(item)}>
-                  <PenLine size={16} />
-                </button>
+                <div className="action-buttons">
+                  <button className="icon-btn" title="Ver detalhes" onClick={() => onDetails(item)}>
+                    <Eye size={16} />
+                  </button>
+                  <button className="icon-btn" title="Editar atestado" onClick={() => onEdit(item)}>
+                    <PenLine size={16} />
+                  </button>
+                  <button className="icon-btn danger-btn" title="Excluir atestado" onClick={() => onDelete(item)}>
+                    <Trash2 size={16} />
+                  </button>
+                </div>
               </td>
             </tr>
           ))}
