@@ -1,0 +1,56 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  RH
+}
+
+model User {
+  id           Int           @id @default(autoincrement())
+  username     String        @unique
+  passwordHash String
+  role         Role
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  certificates Certificate[]
+}
+
+model Certificate {
+  id               Int          @id @default(autoincrement())
+  startDate        DateTime
+  endDate          DateTime
+  registrationDate DateTime
+  employeeName     String
+  cpf              String
+  cid              String?
+  totalDays        Int
+  createdById      Int
+  createdBy        User         @relation(fields: [createdById], references: [id])
+  attachments      Attachment[]
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+
+  @@index([employeeName])
+  @@index([cpf])
+  @@index([cid])
+  @@index([registrationDate])
+  @@index([startDate, endDate])
+}
+
+model Attachment {
+  id            Int         @id @default(autoincrement())
+  filename      String
+  certificateId Int
+  certificate   Certificate @relation(fields: [certificateId], references: [id], onDelete: Cascade)
+  createdAt     DateTime    @default(now())
+
+  @@index([certificateId])
+}
+

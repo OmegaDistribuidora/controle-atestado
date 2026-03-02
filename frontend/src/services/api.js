@@ -1,0 +1,51 @@
+const API_BASE = "/api";
+
+function buildQuery(params = {}) {
+  const query = new URLSearchParams();
+  Object.entries(params).forEach(([key, value]) => {
+    if (value === undefined || value === null || value === "") return;
+    query.set(key, String(value));
+  });
+  const raw = query.toString();
+  return raw ? `?${raw}` : "";
+}
+
+async function request(path, { token, headers = {}, body, method = "GET" } = {}) {
+  const response = await fetch(`${API_BASE}${path}`, {
+    method,
+    headers: {
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...headers,
+    },
+    body,
+  });
+
+  const contentType = response.headers.get("content-type") || "";
+  const payload = contentType.includes("application/json") ? await response.json() : null;
+
+  if (!response.ok) {
+    const message = payload?.message || "Erro inesperado";
+    throw new Error(message);
+  }
+
+  return payload;
+}
+
+export function apiJson(path, { token, method = "GET", data } = {}) {
+  return request(path, {
+    token,
+    method,
+    headers: { "Content-Type": "application/json" },
+    body: data ? JSON.stringify(data) : undefined,
+  });
+}
+
+export function apiForm(path, { token, method = "POST", formData } = {}) {
+  return request(path, {
+    token,
+    method,
+    body: formData,
+  });
+}
+
+export { buildQuery };

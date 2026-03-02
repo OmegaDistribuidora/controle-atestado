@@ -1,0 +1,8 @@
+node_modules
+.env
+/anexos
+backend/node_modules
+frontend/node_modules
+frontend/dist
+backend/prisma/dev.db
+
