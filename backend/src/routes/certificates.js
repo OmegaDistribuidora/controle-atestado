@@ -67,6 +67,56 @@ router.get("/", authRequired, async (req, res) => {
   });
 });
 
+router.get("/employees/suggestions", authRequired, async (req, res) => {
+  const query = String(req.query.q || "").trim();
+  if (query.length < 2) {
+    return res.json({ items: [] });
+  }
+
+  const normalizedQuery = query.toLowerCase();
+
+  const rows = await prisma.certificate.findMany({
+    where: {
+      employeeName: {
+        contains: query,
+        mode: "insensitive",
+      },
+    },
+    select: {
+      employeeName: true,
+      cpf: true,
+      registrationDate: true,
+    },
+    orderBy: {
+      registrationDate: "desc",
+    },
+    take: 60,
+  });
+
+  rows.sort((a, b) => {
+    const aStarts = a.employeeName.toLowerCase().startsWith(normalizedQuery) ? 1 : 0;
+    const bStarts = b.employeeName.toLowerCase().startsWith(normalizedQuery) ? 1 : 0;
+    if (aStarts !== bStarts) return bStarts - aStarts;
+    return new Date(b.registrationDate).getTime() - new Date(a.registrationDate).getTime();
+  });
+
+  const seenCpfs = new Set();
+  const items = [];
+
+  for (const row of rows) {
+    if (seenCpfs.has(row.cpf)) continue;
+    seenCpfs.add(row.cpf);
+    items.push({
+      employeeName: row.employeeName,
+      cpf: row.cpf,
+    });
+
+    if (items.length >= 8) break;
+  }
+
+  return res.json({ items });
+});
+
 router.get("/:id", authRequired, async (req, res) => {
   const id = Number(req.params.id);
   if (Number.isNaN(id)) {

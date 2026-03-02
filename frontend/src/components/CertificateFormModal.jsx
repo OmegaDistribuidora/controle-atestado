@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { X } from "lucide-react";
-import { apiForm } from "../services/api";
+import { apiForm, apiJson } from "../services/api";
 import { formatCpf, normalizeCpf } from "../services/cpf";
 import { calculateAfastamentoInfo } from "../services/date";
 
@@ -22,8 +22,13 @@ export default function CertificateFormModal({ open, onClose, token, initialData
   const [form, setForm] = useState(INITIAL_STATE);
   const [existingAttachments, setExistingAttachments] = useState([]);
   const [newFiles, setNewFiles] = useState([]);
+  const [nameSuggestions, setNameSuggestions] = useState([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [loadingSuggestions, setLoadingSuggestions] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const nameFieldRef = useRef(null);
+  const fetchSeqRef = useRef(0);
 
   useEffect(() => {
     if (!open) return;
@@ -43,8 +48,57 @@ export default function CertificateFormModal({ open, onClose, token, initialData
     }
 
     setNewFiles([]);
+    setNameSuggestions([]);
+    setShowSuggestions(false);
     setError("");
   }, [open, initialData]);
+
+  useEffect(() => {
+    if (!open) return undefined;
+
+    function handleClickOutside(event) {
+      if (!nameFieldRef.current) return;
+      if (!nameFieldRef.current.contains(event.target)) {
+        setShowSuggestions(false);
+      }
+    }
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) return undefined;
+
+    const query = form.employeeName.trim();
+    if (query.length < 2) {
+      setNameSuggestions([]);
+      setLoadingSuggestions(false);
+      return undefined;
+    }
+
+    const currentSeq = fetchSeqRef.current + 1;
+    fetchSeqRef.current = currentSeq;
+
+    setLoadingSuggestions(true);
+
+    const timeout = setTimeout(async () => {
+      try {
+        const payload = await apiJson(`/certificates/employees/suggestions?q=${encodeURIComponent(query)}`, { token });
+        if (fetchSeqRef.current !== currentSeq) return;
+        setNameSuggestions(payload.items || []);
+      } catch (fetchError) {
+        if (fetchSeqRef.current !== currentSeq) return;
+        setNameSuggestions([]);
+      } finally {
+        if (fetchSeqRef.current === currentSeq) {
+          setLoadingSuggestions(false);
+        }
+      }
+    }, 220);
+
+    return () => clearTimeout(timeout);
+  }, [form.employeeName, open, token]);
 
   const afastamentoInfo = useMemo(
     () => calculateAfastamentoInfo(form.startDate, form.endDate),
@@ -116,6 +170,15 @@ export default function CertificateFormModal({ open, onClose, token, initialData
     setNewFiles(files);
   }
 
+  function applySuggestion(suggestion) {
+    setForm((old) => ({
+      ...old,
+      employeeName: suggestion.employeeName,
+      cpf: formatCpf(suggestion.cpf),
+    }));
+    setShowSuggestions(false);
+  }
+
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-card" onClick={(e) => e.stopPropagation()}>
@@ -127,14 +190,42 @@ export default function CertificateFormModal({ open, onClose, token, initialData
         </div>
 
         <form className="modal-form" onSubmit={handleSubmit}>
-          <label>
-            Nome do funcionário *
-            <input
-              type="text"
-              value={form.employeeName}
-              onChange={(e) => setForm((old) => ({ ...old, employeeName: e.target.value }))}
-            />
-          </label>
+          <div className="suggestion-field" ref={nameFieldRef}>
+            <label>
+              Nome do funcionário *
+              <input
+                type="text"
+                value={form.employeeName}
+                onFocus={() => setShowSuggestions(true)}
+                onChange={(e) => {
+                  setForm((old) => ({ ...old, employeeName: e.target.value }));
+                  setShowSuggestions(true);
+                }}
+              />
+            </label>
+
+            {showSuggestions && (loadingSuggestions || nameSuggestions.length > 0) && (
+              <div className="suggestion-dropdown">
+                {loadingSuggestions ? (
+                  <button type="button" className="suggestion-item" disabled>
+                    Buscando sugestões...
+                  </button>
+                ) : (
+                  nameSuggestions.map((item) => (
+                    <button
+                      key={`${item.cpf}-${item.employeeName}`}
+                      type="button"
+                      className="suggestion-item"
+                      onClick={() => applySuggestion(item)}
+                    >
+                      <strong>{item.employeeName}</strong>
+                      <span>{formatCpf(item.cpf)}</span>
+                    </button>
+                  ))
+                )}
+              </div>
+            )}
+          </div>
 
           <label>
             CPF *
