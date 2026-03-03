@@ -257,6 +257,7 @@ p {
   padding: 0.65rem;
   border-bottom: 1px solid var(--line);
   font-size: 0.9rem;
+  white-space: nowrap;
 }
 
 .data-table th {
@@ -483,6 +484,35 @@ p {
   align-items: end;
 }
 
+.analytics-legend {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.7rem;
+}
+
+.legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  color: var(--muted);
+  font-size: 0.83rem;
+}
+
+.legend-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.legend-dot.cert {
+  background: #d58e4b;
+}
+
+.legend-dot.decl {
+  background: #3ba89e;
+}
+
 .year-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -516,20 +546,72 @@ p {
 }
 
 .day-cell {
+  position: relative;
   text-align: center;
   border-radius: 6px;
   padding: 0.16rem 0;
   font-size: 0.72rem;
   background: #1a2a42;
+  transition: transform 0.12s ease, filter 0.12s ease;
 }
 
-.day-cell.active {
-  background: var(--highlight);
-  color: #fff;
+.day-cell.has-data {
+  color: #f8fbff;
+  cursor: default;
+}
+
+.day-cell.has-data.certificate {
+  background: var(--cert-color);
+}
+
+.day-cell.has-data.declaration {
+  background: var(--decl-color);
+}
+
+.day-cell.has-data.mixed {
+  background: linear-gradient(135deg, var(--cert-color), var(--decl-color));
+}
+
+.day-cell:hover {
+  filter: brightness(1.08);
+}
+
+.day-cell.has-data:hover .day-tooltip {
+  opacity: 1;
+  transform: translate(-50%, -6px);
+  pointer-events: none;
 }
 
 .day-cell.empty {
   background: transparent;
+}
+
+.day-tooltip {
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 6px);
+  transform: translate(-50%, -2px);
+  border: 1px solid #3e4f6e;
+  border-radius: 8px;
+  background: #182338;
+  color: #eaf1ff;
+  font-size: 0.72rem;
+  line-height: 1.25;
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.28);
+  padding: 0.45rem 0.55rem;
+  min-width: 172px;
+  text-align: left;
+  display: grid;
+  gap: 0.15rem;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.06s ease, transform 0.06s ease;
+  z-index: 12;
+}
+
+.day-tooltip strong {
+  font-size: 0.73rem;
+  font-weight: 600;
 }
 
 @media (max-width: 1100px) {

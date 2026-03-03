@@ -24,19 +24,31 @@ router.get("/yearly", authRequired, async (req, res) => {
   const yearStart = dayjs.tz(`${requestedYear}-01-01`, "YYYY-MM-DD", fortalezaTz).startOf("day");
   const yearEnd = dayjs.tz(`${requestedYear}-12-31`, "YYYY-MM-DD", fortalezaTz).endOf("day");
 
-  const certificates = await prisma.certificate.findMany({
-    where: {
-      startDate: { lte: yearEnd.toDate() },
-      endDate: { gte: yearStart.toDate() },
-    },
-    select: {
-      startDate: true,
-      endDate: true,
-      cpf: true,
-    },
-  });
+  const [certificates, declarations] = await Promise.all([
+    prisma.certificate.findMany({
+      where: {
+        startDate: { lte: yearEnd.toDate() },
+        endDate: { gte: yearStart.toDate() },
+      },
+      select: {
+        startDate: true,
+        endDate: true,
+        cpf: true,
+      },
+    }),
+    prisma.declaration.findMany({
+      where: {
+        declarationDate: { gte: yearStart.toDate(), lte: yearEnd.toDate() },
+      },
+      select: {
+        declarationDate: true,
+        cpf: true,
+      },
+    }),
+  ]);
 
-  const dayToCpfs = {};
+  const dayToCertificateCpfs = {};
+  const dayToDeclarationCpfs = {};
 
   for (const item of certificates) {
     let current = dayjs(item.startDate).tz(fortalezaTz).startOf("day");
@@ -48,22 +60,44 @@ router.get("/yearly", authRequired, async (req, res) => {
 
     while (current.isSameOrBefore(boundedEnd, "day")) {
       const key = current.format("YYYY-MM-DD");
-      if (!dayToCpfs[key]) {
-        dayToCpfs[key] = new Set();
+      if (!dayToCertificateCpfs[key]) {
+        dayToCertificateCpfs[key] = new Set();
       }
-      dayToCpfs[key].add(item.cpf);
+      dayToCertificateCpfs[key].add(item.cpf);
       current = current.add(1, "day");
     }
   }
 
-  const counts = {};
-  for (const [day, cpfs] of Object.entries(dayToCpfs)) {
-    counts[day] = cpfs.size;
+  for (const item of declarations) {
+    const key = dayjs(item.declarationDate).tz(fortalezaTz).format("YYYY-MM-DD");
+    if (!dayToDeclarationCpfs[key]) {
+      dayToDeclarationCpfs[key] = new Set();
+    }
+    dayToDeclarationCpfs[key].add(item.cpf);
+  }
+
+  const certificateCounts = {};
+  for (const [day, cpfs] of Object.entries(dayToCertificateCpfs)) {
+    certificateCounts[day] = cpfs.size;
+  }
+
+  const declarationCounts = {};
+  for (const [day, cpfs] of Object.entries(dayToDeclarationCpfs)) {
+    declarationCounts[day] = cpfs.size;
+  }
+
+  const allDays = new Set([...Object.keys(certificateCounts), ...Object.keys(declarationCounts)]);
+  let maxTotalCount = 0;
+  for (const day of allDays) {
+    const total = (certificateCounts[day] || 0) + (declarationCounts[day] || 0);
+    if (total > maxTotalCount) maxTotalCount = total;
   }
 
   return res.json({
     year: requestedYear,
-    counts,
+    certificateCounts,
+    declarationCounts,
+    maxTotalCount,
   });
 });
 

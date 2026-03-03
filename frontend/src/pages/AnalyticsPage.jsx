@@ -6,7 +6,9 @@ import { apiJson } from "../services/api";
 export default function AnalyticsPage() {
   const { token } = useAuth();
   const [year, setYear] = useState(new Date().getFullYear());
-  const [counts, setCounts] = useState({});
+  const [certificateCounts, setCertificateCounts] = useState({});
+  const [declarationCounts, setDeclarationCounts] = useState({});
+  const [maxTotalCount, setMaxTotalCount] = useState(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -15,7 +17,11 @@ export default function AnalyticsPage() {
     setError("");
 
     apiJson(`/analytics/yearly?year=${year}`, { token })
-      .then((payload) => setCounts(payload.counts || {}))
+      .then((payload) => {
+        setCertificateCounts(payload.certificateCounts || {});
+        setDeclarationCounts(payload.declarationCounts || {});
+        setMaxTotalCount(payload.maxTotalCount || 0);
+      })
       .catch((fetchError) => setError(fetchError.message))
       .finally(() => setLoading(false));
   }, [token, year]);
@@ -24,8 +30,8 @@ export default function AnalyticsPage() {
     <section className="page-stack">
       <header className="page-header">
         <div>
-          <h2>Painel de análises</h2>
-          <p>Calendário anual com destaque em laranja para dias com afastados.</p>
+          <h2>Painel de analises</h2>
+          <p>Calendario anual com atestados e declaracoes em cores diferentes.</p>
         </div>
 
         <label className="inline-field">
@@ -35,7 +41,27 @@ export default function AnalyticsPage() {
       </header>
 
       <section className="panel">
-        {loading ? <p>Carregando análise...</p> : <YearCalendar year={year} counts={counts} />}
+        <div className="analytics-legend">
+          <span className="legend-item">
+            <i className="legend-dot cert" />
+            Atestados
+          </span>
+          <span className="legend-item">
+            <i className="legend-dot decl" />
+            Declaracoes
+          </span>
+        </div>
+
+        {loading ? (
+          <p>Carregando analise...</p>
+        ) : (
+          <YearCalendar
+            year={year}
+            certificateCounts={certificateCounts}
+            declarationCounts={declarationCounts}
+            maxTotalCount={maxTotalCount}
+          />
+        )}
       </section>
 
       {error && <p className="error-text">{error}</p>}
