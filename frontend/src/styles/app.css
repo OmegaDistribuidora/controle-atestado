@@ -189,6 +189,17 @@ p {
   gap: 0.5rem;
 }
 
+.type-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.active-switch {
+  border-color: #5772a1;
+  background: #253650;
+}
+
 .kpi-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -263,6 +274,17 @@ p {
 .data-table th {
   color: var(--muted);
   font-weight: 600;
+}
+
+.sort-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  border: none;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  padding: 0;
 }
 
 .dashboard-table-wrap {
@@ -408,6 +430,10 @@ p {
   gap: 1rem;
 }
 
+.large-modal {
+  width: min(980px, 100%);
+}
+
 .modal-header {
   display: flex;
   justify-content: space-between;
@@ -499,6 +525,16 @@ p {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 0.5rem 1rem;
+}
+
+.employee-summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.45rem 0.8rem;
+}
+
+.employee-summary-cids {
+  grid-column: 1 / -1;
 }
 
 .details-files .ghost-btn {
@@ -677,7 +713,8 @@ p {
   .filter-grid,
   .inline-form,
   .year-grid,
-  .details-grid {
+  .details-grid,
+  .employee-summary {
     grid-template-columns: 1fr;
   }
 

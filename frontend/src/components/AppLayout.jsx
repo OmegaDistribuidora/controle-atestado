@@ -6,7 +6,8 @@ const MENU = [
   { to: "/", label: "Dashboard", icon: LayoutDashboard },
   { to: "/atestados", label: "Todos os Atestados", icon: ClipboardList },
   { to: "/declaracoes", label: "Todas as Declaracoes", icon: FileText },
-  { to: "/analises", label: "Painel de Analises", icon: CalendarClock },
+  { to: "/analises", label: "Analise anual", icon: CalendarClock },
+  { to: "/analises-colaborador", label: "Analise por colaborador", icon: Users },
 ];
 
 export default function AppLayout() {

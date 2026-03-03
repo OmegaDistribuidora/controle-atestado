@@ -5,6 +5,7 @@ import AnalyticsPage from "./pages/AnalyticsPage";
 import CertificatesPage from "./pages/CertificatesPage";
 import DeclarationsPage from "./pages/DeclarationsPage";
 import DashboardPage from "./pages/DashboardPage";
+import EmployeeAnalyticsPage from "./pages/EmployeeAnalyticsPage";
 import LoginPage from "./pages/LoginPage";
 import UsersPage from "./pages/UsersPage";
 
@@ -24,6 +25,7 @@ export default function App() {
         <Route path="atestados" element={<CertificatesPage />} />
         <Route path="declaracoes" element={<DeclarationsPage />} />
         <Route path="analises" element={<AnalyticsPage />} />
+        <Route path="analises-colaborador" element={<EmployeeAnalyticsPage />} />
         <Route path="usuarios" element={<UsersPage />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />

@@ -14,6 +14,57 @@ dayjs.extend(isSameOrBefore);
 
 const router = express.Router();
 
+function normalizeCpf(input) {
+  return String(input || "")
+    .replace(/\D/g, "")
+    .slice(0, 11);
+}
+
+function parseSort(query, type) {
+  const allowedCertificate = new Set([
+    "employeeName",
+    "cpf",
+    "launchesCount",
+    "totalDays",
+    "lastRegistrationDate",
+    "cidsCount",
+  ]);
+  const allowedDeclaration = new Set([
+    "employeeName",
+    "cpf",
+    "launchesCount",
+    "totalHours",
+    "lastRegistrationDate",
+  ]);
+  const allowed = type === "declaration" ? allowedDeclaration : allowedCertificate;
+
+  const requestedSortBy = String(query.sortBy || "");
+  const sortBy = allowed.has(requestedSortBy)
+    ? requestedSortBy
+    : type === "declaration"
+      ? "totalHours"
+      : "totalDays";
+
+  const sortDir = String(query.sortDir || "desc").toLowerCase() === "asc" ? "asc" : "desc";
+  return { sortBy, sortDir };
+}
+
+function sortRows(rows, sortBy, sortDir) {
+  const factor = sortDir === "asc" ? 1 : -1;
+  const sorted = [...rows];
+  sorted.sort((a, b) => {
+    const av = a[sortBy];
+    const bv = b[sortBy];
+
+    if (av === bv) return 0;
+    if (typeof av === "number" && typeof bv === "number") return (av - bv) * factor;
+    if (av instanceof Date && bv instanceof Date) return (av.getTime() - bv.getTime()) * factor;
+
+    return String(av).localeCompare(String(bv), "pt-BR", { sensitivity: "base" }) * factor;
+  });
+  return sorted;
+}
+
 router.get("/yearly", authRequired, async (req, res) => {
   const requestedYear = Number(req.query.year) || dayjs().tz(fortalezaTz).year();
 
@@ -98,6 +149,210 @@ router.get("/yearly", authRequired, async (req, res) => {
     certificateCounts,
     declarationCounts,
     maxTotalCount,
+  });
+});
+
+router.get("/employees", authRequired, async (req, res) => {
+  const type = String(req.query.type || "certificate").toLowerCase() === "declaration" ? "declaration" : "certificate";
+  const { sortBy, sortDir } = parseSort(req.query, type);
+
+  if (type === "declaration") {
+    const rows = await prisma.declaration.findMany({
+      select: {
+        employeeName: true,
+        cpf: true,
+        totalMinutes: true,
+        registrationDate: true,
+      },
+      orderBy: { registrationDate: "desc" },
+    });
+
+    const map = new Map();
+    for (const item of rows) {
+      const cpf = normalizeCpf(item.cpf);
+      if (!cpf) continue;
+
+      if (!map.has(cpf)) {
+        map.set(cpf, {
+          employeeName: item.employeeName,
+          cpf,
+          launchesCount: 0,
+          totalMinutes: 0,
+          totalHours: 0,
+          lastRegistrationDate: item.registrationDate,
+        });
+      }
+
+      const row = map.get(cpf);
+      row.launchesCount += 1;
+      row.totalMinutes += item.totalMinutes || 0;
+      if (new Date(item.registrationDate).getTime() > new Date(row.lastRegistrationDate).getTime()) {
+        row.lastRegistrationDate = item.registrationDate;
+        row.employeeName = item.employeeName;
+      }
+    }
+
+    const aggregated = Array.from(map.values()).map((item) => ({
+      ...item,
+      totalHours: Number((item.totalMinutes / 60).toFixed(2)),
+    }));
+
+    const items = sortRows(aggregated, sortBy, sortDir);
+    return res.json({ type, sortBy, sortDir, items });
+  }
+
+  const rows = await prisma.certificate.findMany({
+    select: {
+      employeeName: true,
+      cpf: true,
+      totalDays: true,
+      cid: true,
+      registrationDate: true,
+    },
+    orderBy: { registrationDate: "desc" },
+  });
+
+  const map = new Map();
+  for (const item of rows) {
+    const cpf = normalizeCpf(item.cpf);
+    if (!cpf) continue;
+
+    if (!map.has(cpf)) {
+      map.set(cpf, {
+        employeeName: item.employeeName,
+        cpf,
+        launchesCount: 0,
+        totalDays: 0,
+        cids: new Set(),
+        cidsCount: 0,
+        lastRegistrationDate: item.registrationDate,
+      });
+    }
+
+    const row = map.get(cpf);
+    row.launchesCount += 1;
+    row.totalDays += item.totalDays || 0;
+    if (item.cid) row.cids.add(item.cid);
+    row.cidsCount = row.cids.size;
+
+    if (new Date(item.registrationDate).getTime() > new Date(row.lastRegistrationDate).getTime()) {
+      row.lastRegistrationDate = item.registrationDate;
+      row.employeeName = item.employeeName;
+    }
+  }
+
+  const aggregated = Array.from(map.values()).map((item) => ({
+    employeeName: item.employeeName,
+    cpf: item.cpf,
+    launchesCount: item.launchesCount,
+    totalDays: item.totalDays,
+    cidsCount: item.cidsCount,
+    cids: Array.from(item.cids).sort(),
+    lastRegistrationDate: item.lastRegistrationDate,
+  }));
+
+  const items = sortRows(aggregated, sortBy, sortDir);
+  return res.json({ type, sortBy, sortDir, items });
+});
+
+router.get("/employees/:cpf/details", authRequired, async (req, res) => {
+  const cpf = normalizeCpf(req.params.cpf);
+  const type = String(req.query.type || "certificate").toLowerCase() === "declaration" ? "declaration" : "certificate";
+
+  if (!cpf) {
+    return res.status(400).json({ message: "CPF invalido." });
+  }
+
+  if (type === "declaration") {
+    const declarations = await prisma.declaration.findMany({
+      where: { cpf },
+      orderBy: { registrationDate: "desc" },
+      select: {
+        id: true,
+        employeeName: true,
+        cpf: true,
+        declarationDate: true,
+        registrationDate: true,
+        startTime: true,
+        endTime: true,
+        totalMinutes: true,
+        createdBy: { select: { username: true } },
+      },
+    });
+
+    if (!declarations.length) {
+      return res.status(404).json({ message: "Nenhum registro encontrado para este colaborador." });
+    }
+
+    const totalMinutes = declarations.reduce((acc, item) => acc + (item.totalMinutes || 0), 0);
+    return res.json({
+      type,
+      summary: {
+        employeeName: declarations[0].employeeName,
+        cpf,
+        launchesCount: declarations.length,
+        totalHours: Number((totalMinutes / 60).toFixed(2)),
+        firstRegistrationDate: declarations[declarations.length - 1].registrationDate,
+        lastRegistrationDate: declarations[0].registrationDate,
+      },
+      items: declarations.map((item) => ({
+        id: item.id,
+        declarationDate: item.declarationDate,
+        registrationDate: item.registrationDate,
+        startTime: item.startTime,
+        endTime: item.endTime,
+        totalHours: Number(((item.totalMinutes || 0) / 60).toFixed(2)),
+        launchedBy: item.createdBy?.username || "-",
+      })),
+    });
+  }
+
+  const certificates = await prisma.certificate.findMany({
+    where: { cpf },
+    orderBy: { registrationDate: "desc" },
+    select: {
+      id: true,
+      employeeName: true,
+      cpf: true,
+      cid: true,
+      startDate: true,
+      endDate: true,
+      totalDays: true,
+      registrationDate: true,
+      createdBy: { select: { username: true } },
+    },
+  });
+
+  if (!certificates.length) {
+    return res.status(404).json({ message: "Nenhum registro encontrado para este colaborador." });
+  }
+
+  const cidSet = new Set();
+  const totalDays = certificates.reduce((acc, item) => acc + (item.totalDays || 0), 0);
+  certificates.forEach((item) => {
+    if (item.cid) cidSet.add(item.cid);
+  });
+
+  return res.json({
+    type,
+    summary: {
+      employeeName: certificates[0].employeeName,
+      cpf,
+      launchesCount: certificates.length,
+      totalDays,
+      cids: Array.from(cidSet).sort(),
+      firstRegistrationDate: certificates[certificates.length - 1].registrationDate,
+      lastRegistrationDate: certificates[0].registrationDate,
+    },
+    items: certificates.map((item) => ({
+      id: item.id,
+      registrationDate: item.registrationDate,
+      startDate: item.startDate,
+      endDate: item.endDate,
+      totalDays: item.totalDays,
+      cid: item.cid || "-",
+      launchedBy: item.createdBy?.username || "-",
+    })),
   });
 });
 

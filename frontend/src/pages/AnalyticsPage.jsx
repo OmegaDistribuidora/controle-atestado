@@ -30,7 +30,7 @@ export default function AnalyticsPage() {
     <section className="page-stack">
       <header className="page-header">
         <div>
-          <h2>Painel de analises</h2>
+          <h2>Analise anual</h2>
           <p>Calendario anual com atestados e declaracoes em cores diferentes.</p>
         </div>
 
