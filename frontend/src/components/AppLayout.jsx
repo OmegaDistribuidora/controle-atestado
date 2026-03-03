@@ -1,11 +1,12 @@
-import { CalendarClock, ClipboardList, LayoutDashboard, LogOut, Users } from "lucide-react";
+import { CalendarClock, ClipboardList, FileText, LayoutDashboard, LogOut, Users } from "lucide-react";
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { useAuth } from "./AuthProvider";
 
 const MENU = [
   { to: "/", label: "Dashboard", icon: LayoutDashboard },
   { to: "/atestados", label: "Todos os Atestados", icon: ClipboardList },
-  { to: "/analises", label: "Painel de Análises", icon: CalendarClock },
+  { to: "/declaracoes", label: "Todas as Declaracoes", icon: FileText },
+  { to: "/analises", label: "Painel de Analises", icon: CalendarClock },
 ];
 
 export default function AppLayout() {
@@ -34,7 +35,7 @@ export default function AppLayout() {
           {user?.role === "ADMIN" && (
             <NavLink to="/usuarios" className="nav-item">
               <Users size={15} />
-              <span>Usuários</span>
+              <span>Usuarios</span>
             </NavLink>
           )}
         </nav>

@@ -1,4 +1,3 @@
-const dayjs = require("dayjs");
 const { parseDateInFortaleza, nowInFortaleza } = require("./date");
 
 function toDateRangeByPeriod(period, customFrom, customTo) {
@@ -73,6 +72,25 @@ function buildCertificatesWhere(query) {
   return where;
 }
 
+function buildDeclarationsWhere(query) {
+  const where = {};
+
+  if (query.search) {
+    const search = String(query.search);
+    const cpfDigits = search.replace(/\D/g, "");
+    const cpfFilters = cpfDigits ? [{ cpf: { contains: cpfDigits } }] : [];
+
+    where.OR = [{ employeeName: { contains: search, mode: "insensitive" } }, ...cpfFilters];
+  }
+
+  const periodRange = toDateRangeByPeriod(query.period, query.customFrom, query.customTo);
+  if (periodRange) {
+    where.registrationDate = periodRange;
+  }
+
+  return where;
+}
+
 function buildPagination(query, fallbackLimit = 20) {
   const limit = Math.min(Math.max(Number(query.limit) || fallbackLimit, 1), 200);
   const page = Math.max(Number(query.page) || 1, 1);
@@ -83,6 +101,8 @@ function buildPagination(query, fallbackLimit = 20) {
 
 module.exports = {
   buildCertificatesWhere,
+  buildDeclarationsWhere,
   buildPagination,
+  toDateRangeByPeriod,
 };
 

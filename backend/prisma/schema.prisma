@@ -20,6 +20,7 @@ model User {
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
   certificates Certificate[]
+  declarations Declaration[]
 }
 
 model Certificate {
@@ -52,5 +53,36 @@ model Attachment {
   createdAt     DateTime    @default(now())
 
   @@index([certificateId])
+}
+
+model Declaration {
+  id                  Int                   @id @default(autoincrement())
+  declarationDate     DateTime
+  registrationDate    DateTime
+  employeeName        String
+  cpf                 String
+  startTime           String
+  endTime             String
+  totalMinutes        Int
+  createdById         Int
+  createdBy           User                  @relation(fields: [createdById], references: [id])
+  declarationFiles    DeclarationAttachment[]
+  createdAt           DateTime              @default(now())
+  updatedAt           DateTime              @updatedAt
+
+  @@index([employeeName])
+  @@index([cpf])
+  @@index([registrationDate])
+  @@index([declarationDate])
+}
+
+model DeclarationAttachment {
+  id            Int         @id @default(autoincrement())
+  filename      String
+  declarationId Int
+  declaration   Declaration @relation(fields: [declarationId], references: [id], onDelete: Cascade)
+  createdAt     DateTime    @default(now())
+
+  @@index([declarationId])
 }
 

@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 import CertificateDetailsModal from "../components/CertificateDetailsModal";
 import CertificateFormModal from "../components/CertificateFormModal";
-import CertificateTable from "../components/CertificateTable";
+import DashboardRecentTable from "../components/DashboardRecentTable";
+import DeclarationDetailsModal from "../components/DeclarationDetailsModal";
+import DeclarationFormModal from "../components/DeclarationFormModal";
 import FilterBar from "../components/FilterBar";
 import KpiCard from "../components/KpiCard";
 import { useAuth } from "../components/AuthProvider";
@@ -18,16 +20,30 @@ const DEFAULT_FILTERS = {
 
 export default function DashboardPage() {
   const { token, user } = useAuth();
-  const [summary, setSummary] = useState({ totalCertificates: 0, totalDays: 0, activeEmployeesToday: 0 });
+  const [summary, setSummary] = useState({
+    totalCertificates: 0,
+    totalDeclarations: 0,
+    totalDays: 0,
+    totalDeclarationHours: 0,
+    activeEmployeesToday: 0,
+    declarationsToday: 0,
+  });
   const [items, setItems] = useState([]);
   const [filters, setFilters] = useState(DEFAULT_FILTERS);
   const [appliedFilters, setAppliedFilters] = useState(DEFAULT_FILTERS);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [modalOpen, setModalOpen] = useState(false);
-  const [editingItem, setEditingItem] = useState(null);
-  const [detailsOpen, setDetailsOpen] = useState(false);
-  const [detailsItem, setDetailsItem] = useState(null);
+
+  const [certificateModalOpen, setCertificateModalOpen] = useState(false);
+  const [editingCertificate, setEditingCertificate] = useState(null);
+  const [certificateDetailsOpen, setCertificateDetailsOpen] = useState(false);
+  const [certificateDetailsItem, setCertificateDetailsItem] = useState(null);
+
+  const [declarationModalOpen, setDeclarationModalOpen] = useState(false);
+  const [editingDeclaration, setEditingDeclaration] = useState(null);
+  const [declarationDetailsOpen, setDeclarationDetailsOpen] = useState(false);
+  const [declarationDetailsItem, setDeclarationDetailsItem] = useState(null);
+
   const [refreshKey, setRefreshKey] = useState(0);
 
   const todayLabel = useMemo(() => getTodayFortalezaLabel(), []);
@@ -52,31 +68,39 @@ export default function DashboardPage() {
       .finally(() => setLoading(false));
   }, [token, appliedFilters, refreshKey]);
 
-  function openCreateModal() {
-    setEditingItem(null);
-    setModalOpen(true);
-  }
-
-  function openEditModal(item) {
-    setEditingItem(item);
-    setModalOpen(true);
-  }
-
   function handleSaved() {
     setRefreshKey((old) => old + 1);
   }
 
-  function openDetailsModal(item) {
-    setDetailsItem(item);
-    setDetailsOpen(true);
+  function handleEdit(item) {
+    if (item.type === "DECLARATION") {
+      setEditingDeclaration(item);
+      setDeclarationModalOpen(true);
+      return;
+    }
+    setEditingCertificate(item);
+    setCertificateModalOpen(true);
+  }
+
+  function handleDetails(item) {
+    if (item.type === "DECLARATION") {
+      setDeclarationDetailsItem(item);
+      setDeclarationDetailsOpen(true);
+      return;
+    }
+    setCertificateDetailsItem(item);
+    setCertificateDetailsOpen(true);
   }
 
   async function handleDelete(item) {
-    const confirmed = window.confirm(`Deseja excluir o atestado de ${item.employeeName}?`);
+    const label = item.type === "DECLARATION" ? "declaracao" : "atestado";
+    const confirmed = window.confirm(`Deseja excluir o ${label} de ${item.employeeName}?`);
     if (!confirmed) return;
 
+    const path = item.type === "DECLARATION" ? `/declarations/${item.id}` : `/certificates/${item.id}`;
+
     try {
-      await apiJson(`/certificates/${item.id}`, { token, method: "DELETE" });
+      await apiJson(path, { token, method: "DELETE" });
       setRefreshKey((old) => old + 1);
     } catch (deleteError) {
       setError(deleteError.message);
@@ -89,22 +113,42 @@ export default function DashboardPage() {
         <div>
           <h2>Dashboard principal</h2>
           <p>
-            Bem-vindo, <strong>{user?.username}</strong>. Hoje é {todayLabel}.
+            Bem-vindo, <strong>{user?.username}</strong>. Hoje e {todayLabel}.
           </p>
         </div>
-        <button className="primary-btn" onClick={openCreateModal}>
-          Novo atestado
-        </button>
+        <div className="header-actions">
+          <button
+            className="primary-btn"
+            onClick={() => {
+              setEditingCertificate(null);
+              setCertificateModalOpen(true);
+            }}
+          >
+            Novo atestado
+          </button>
+          <button
+            className="ghost-btn"
+            onClick={() => {
+              setEditingDeclaration(null);
+              setDeclarationModalOpen(true);
+            }}
+          >
+            Nova declaracao
+          </button>
+        </div>
       </header>
 
-      <section className="kpi-grid">
+      <section className="kpi-grid kpi-grid-expanded">
         <KpiCard label="Total de atestados" value={summary.totalCertificates} />
+        <KpiCard label="Total de declaracoes" value={summary.totalDeclarations} />
         <KpiCard label="Total de dias de atestado" value={summary.totalDays} />
-        <KpiCard label="Funcionários afastados hoje" value={summary.activeEmployeesToday} />
+        <KpiCard label="Total de horas de declaracoes" value={summary.totalDeclarationHours} />
+        <KpiCard label="Funcionarios afastados hoje" value={summary.activeEmployeesToday} />
+        <KpiCard label="Declaracoes hoje" value={summary.declarationsToday} />
       </section>
 
       <section className="panel">
-        <h3>Últimos 20 lançamentos</h3>
+        <h3>Ultimos 20 lancamentos</h3>
         <FilterBar
           filters={filters}
           setFilters={setFilters}
@@ -118,24 +162,37 @@ export default function DashboardPage() {
         {loading ? (
           <p>Carregando...</p>
         ) : (
-          <CertificateTable items={items} onEdit={openEditModal} onDetails={openDetailsModal} onDelete={handleDelete} />
+          <DashboardRecentTable items={items} onEdit={handleEdit} onDetails={handleDetails} onDelete={handleDelete} />
         )}
       </section>
 
       {error && <p className="error-text">{error}</p>}
 
       <CertificateFormModal
-        open={modalOpen}
-        onClose={() => setModalOpen(false)}
+        open={certificateModalOpen}
+        onClose={() => setCertificateModalOpen(false)}
         token={token}
-        initialData={editingItem}
+        initialData={editingCertificate}
         onSaved={handleSaved}
       />
       <CertificateDetailsModal
-        open={detailsOpen}
-        onClose={() => setDetailsOpen(false)}
+        open={certificateDetailsOpen}
+        onClose={() => setCertificateDetailsOpen(false)}
         token={token}
-        item={detailsItem}
+        item={certificateDetailsItem}
+      />
+      <DeclarationFormModal
+        open={declarationModalOpen}
+        onClose={() => setDeclarationModalOpen(false)}
+        token={token}
+        initialData={editingDeclaration}
+        onSaved={handleSaved}
+      />
+      <DeclarationDetailsModal
+        open={declarationDetailsOpen}
+        onClose={() => setDeclarationDetailsOpen(false)}
+        token={token}
+        item={declarationDetailsItem}
       />
     </section>
   );

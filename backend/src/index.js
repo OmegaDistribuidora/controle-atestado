@@ -24,6 +24,7 @@ const { ensureDefaultUsers } = require("./services/seed");
 const authRoutes = require("./routes/auth");
 const userRoutes = require("./routes/users");
 const certificateRoutes = require("./routes/certificates");
+const declarationRoutes = require("./routes/declarations");
 const dashboardRoutes = require("./routes/dashboard");
 const analyticsRoutes = require("./routes/analytics");
 
@@ -46,6 +47,7 @@ app.get("/api/health", (req, res) => {
 app.use("/api/auth", authRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/certificates", certificateRoutes);
+app.use("/api/declarations", declarationRoutes);
 app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/analytics", analyticsRoutes);
 

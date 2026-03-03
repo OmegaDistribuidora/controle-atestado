@@ -183,10 +183,20 @@ p {
   color: var(--muted);
 }
 
+.header-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
 .kpi-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 0.8rem;
+}
+
+.kpi-grid-expanded {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
 .kpi-card {
@@ -304,6 +314,21 @@ p {
 .danger-btn {
   border-color: rgba(255, 107, 120, 0.5);
   color: #ff8f9b;
+}
+
+.type-badge {
+  padding: 0.15rem 0.45rem;
+  border-radius: 999px;
+  font-size: 0.74rem;
+  border: 1px solid var(--line);
+}
+
+.type-badge.certificate {
+  background: rgba(90, 120, 169, 0.2);
+}
+
+.type-badge.declaration {
+  background: rgba(213, 142, 75, 0.2);
 }
 
 .primary-btn:disabled,
@@ -529,5 +554,9 @@ p {
   .pagination-row {
     flex-direction: column;
     align-items: start;
+  }
+
+  .header-actions {
+    width: 100%;
   }
 }

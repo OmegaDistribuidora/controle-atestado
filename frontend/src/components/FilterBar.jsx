@@ -1,38 +1,45 @@
-export default function FilterBar({ filters, setFilters, onApply, onReset }) {
+export default function FilterBar({
+  filters,
+  setFilters,
+  onApply,
+  onReset,
+  showTotalDays = true,
+  searchLabel = "Buscar funcionario / CPF / CID",
+  searchPlaceholder = "Ex: Joao, 123..., M54",
+}) {
   return (
     <section className="filter-bar">
       <div className="filter-grid">
         <label>
-          Buscar funcionário / CPF / CID
+          {searchLabel}
           <input
             type="text"
             value={filters.search}
             onChange={(e) => setFilters((old) => ({ ...old, search: e.target.value }))}
-            placeholder="Ex: João, 123..., M54"
+            placeholder={searchPlaceholder}
           />
         </label>
 
-        <label>
-          Dias totais do atestado
-          <input
-            type="number"
-            min="1"
-            value={filters.totalDays}
-            onChange={(e) => setFilters((old) => ({ ...old, totalDays: e.target.value }))}
-            placeholder="Ex: 10"
-          />
-        </label>
+        {showTotalDays && (
+          <label>
+            Dias totais do atestado
+            <input
+              type="number"
+              min="1"
+              value={filters.totalDays}
+              onChange={(e) => setFilters((old) => ({ ...old, totalDays: e.target.value }))}
+              placeholder="Ex: 10"
+            />
+          </label>
+        )}
 
         <label>
-          Período
-          <select
-            value={filters.period}
-            onChange={(e) => setFilters((old) => ({ ...old, period: e.target.value }))}
-          >
+          Periodo
+          <select value={filters.period} onChange={(e) => setFilters((old) => ({ ...old, period: e.target.value }))}>
             <option value="">Todos</option>
             <option value="today">Hoje</option>
             <option value="7days">7 dias</option>
-            <option value="month">Mês atual</option>
+            <option value="month">Mes atual</option>
             <option value="custom">Personalizado</option>
           </select>
         </label>
@@ -49,7 +56,7 @@ export default function FilterBar({ filters, setFilters, onApply, onReset }) {
             </label>
 
             <label>
-              Até
+              Ate
               <input
                 type="date"
                 value={filters.customTo}

@@ -20,7 +20,31 @@ function serializeCertificate(certificate) {
   };
 }
 
+function serializeDeclaration(declaration) {
+  return {
+    id: declaration.id,
+    declarationDate: declaration.declarationDate,
+    registrationDate: declaration.registrationDate,
+    employeeName: declaration.employeeName,
+    cpf: declaration.cpf,
+    startTime: declaration.startTime,
+    endTime: declaration.endTime,
+    totalMinutes: declaration.totalMinutes,
+    totalHours: Number((declaration.totalMinutes / 60).toFixed(2)),
+    createdBy: declaration.createdBy
+      ? {
+          id: declaration.createdBy.id,
+          username: declaration.createdBy.username,
+        }
+      : null,
+    attachments: (declaration.declarationFiles || []).map((item) => item.filename),
+    createdAt: declaration.createdAt,
+    updatedAt: declaration.updatedAt,
+  };
+}
+
 module.exports = {
   serializeCertificate,
+  serializeDeclaration,
 };
 

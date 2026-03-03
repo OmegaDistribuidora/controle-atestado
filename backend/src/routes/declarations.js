@@ -7,24 +7,23 @@ const prisma = require("../db");
 const { authRequired } = require("../middleware");
 const { upload, deleteFilesByName } = require("../upload");
 const { attachmentsDir } = require("../config");
-const { normalizeAfastamentoDates, nowInFortaleza } = require("../utils/date");
-const { buildCertificatesWhere, buildPagination } = require("../utils/filters");
-const { serializeCertificate } = require("../utils/serializers");
+const { nowInFortaleza, parseDateInFortaleza } = require("../utils/date");
+const { buildDeclarationsWhere, buildPagination } = require("../utils/filters");
+const { serializeDeclaration } = require("../utils/serializers");
 
 const router = express.Router();
 
-const certificateSchema = z.object({
+const declarationSchema = z.object({
   employeeName: z.string().min(1),
   cpf: z.string().min(1),
-  startDate: z.string().min(1),
-  endDate: z.string().optional().nullable(),
-  cid: z.string().optional().nullable(),
+  declarationDate: z.string().min(1),
+  startTime: z.string().min(1),
+  endTime: z.string().min(1),
 });
 
 function runUpload(req, res, next) {
   upload.array("attachments", 3)(req, res, (err) => {
     if (!err) return next();
-
     return res.status(400).json({ message: err.message || "Erro no upload." });
   });
 }
@@ -35,25 +34,57 @@ function normalizeBody(rawBody) {
     cpf: String(rawBody.cpf || "")
       .replace(/\D/g, "")
       .slice(0, 11),
-    startDate: (rawBody.startDate || "").trim(),
-    endDate: rawBody.endDate ? String(rawBody.endDate).trim() : null,
-    cid: rawBody.cid ? String(rawBody.cid).trim() : null,
+    declarationDate: (rawBody.declarationDate || "").trim(),
+    startTime: (rawBody.startTime || "").trim(),
+    endTime: (rawBody.endTime || "").trim(),
+  };
+}
+
+function parseHourMinutes(timeInput) {
+  const match = /^([01]\d|2[0-3]):([0-5]\d)$/.exec(timeInput);
+  if (!match) return null;
+  const hours = Number(match[1]);
+  const minutes = Number(match[2]);
+  return hours * 60 + minutes;
+}
+
+function normalizeDeclarationValues(values) {
+  const declarationDate = parseDateInFortaleza(values.declarationDate);
+  if (!declarationDate.isValid()) {
+    return { error: "Data da declaração inválida." };
+  }
+
+  const startMinutes = parseHourMinutes(values.startTime);
+  const endMinutes = parseHourMinutes(values.endTime);
+  if (startMinutes === null || endMinutes === null) {
+    return { error: "Horários devem estar no formato HH:MM." };
+  }
+
+  if (endMinutes <= startMinutes) {
+    return { error: "Horário final deve ser maior que o horário inicial." };
+  }
+
+  return {
+    declarationDate: declarationDate.toDate(),
+    startTime: values.startTime,
+    endTime: values.endTime,
+    totalMinutes: endMinutes - startMinutes,
   };
 }
 
 router.get("/", authRequired, async (req, res) => {
-  const where = buildCertificatesWhere(req.query);
+  const where = buildDeclarationsWhere(req.query);
   const { page, limit, skip } = buildPagination(req.query, 20);
 
   const [total, items] = await Promise.all([
-    prisma.certificate.count({ where }),
-    prisma.certificate.findMany({
+    prisma.declaration.count({ where }),
+    prisma.declaration.findMany({
       where,
       skip,
       take: limit,
       orderBy: { registrationDate: "desc" },
       include: {
-        attachments: true,
+        declarationFiles: true,
         createdBy: { select: { id: true, username: true } },
       },
     }),
@@ -63,79 +94,8 @@ router.get("/", authRequired, async (req, res) => {
     page,
     limit,
     total,
-    items: items.map(serializeCertificate),
+    items: items.map(serializeDeclaration),
   });
-});
-
-router.get("/employees/suggestions", authRequired, async (req, res) => {
-  const query = String(req.query.q || "").trim();
-  if (query.length < 2) {
-    return res.json({ items: [] });
-  }
-
-  const normalizedQuery = query.toLowerCase();
-
-  const [certificateRows, declarationRows] = await Promise.all([
-    prisma.certificate.findMany({
-      where: {
-        employeeName: {
-          contains: query,
-          mode: "insensitive",
-        },
-      },
-      select: {
-        employeeName: true,
-        cpf: true,
-        registrationDate: true,
-      },
-      orderBy: {
-        registrationDate: "desc",
-      },
-      take: 40,
-    }),
-    prisma.declaration.findMany({
-      where: {
-        employeeName: {
-          contains: query,
-          mode: "insensitive",
-        },
-      },
-      select: {
-        employeeName: true,
-        cpf: true,
-        registrationDate: true,
-      },
-      orderBy: {
-        registrationDate: "desc",
-      },
-      take: 40,
-    }),
-  ]);
-
-  const rows = [...certificateRows, ...declarationRows];
-
-  rows.sort((a, b) => {
-    const aStarts = a.employeeName.toLowerCase().startsWith(normalizedQuery) ? 1 : 0;
-    const bStarts = b.employeeName.toLowerCase().startsWith(normalizedQuery) ? 1 : 0;
-    if (aStarts !== bStarts) return bStarts - aStarts;
-    return new Date(b.registrationDate).getTime() - new Date(a.registrationDate).getTime();
-  });
-
-  const seenCpfs = new Set();
-  const items = [];
-
-  for (const row of rows) {
-    if (seenCpfs.has(row.cpf)) continue;
-    seenCpfs.add(row.cpf);
-    items.push({
-      employeeName: row.employeeName,
-      cpf: row.cpf,
-    });
-
-    if (items.length >= 8) break;
-  }
-
-  return res.json({ items });
 });
 
 router.get("/:id", authRequired, async (req, res) => {
@@ -144,19 +104,19 @@ router.get("/:id", authRequired, async (req, res) => {
     return res.status(400).json({ message: "ID inválido." });
   }
 
-  const certificate = await prisma.certificate.findUnique({
+  const declaration = await prisma.declaration.findUnique({
     where: { id },
     include: {
-      attachments: true,
+      declarationFiles: true,
       createdBy: { select: { id: true, username: true } },
     },
   });
 
-  if (!certificate) {
-    return res.status(404).json({ message: "Atestado não encontrado." });
+  if (!declaration) {
+    return res.status(404).json({ message: "Declaração não encontrada." });
   }
 
-  return res.json({ item: serializeCertificate(certificate) });
+  return res.json({ item: serializeDeclaration(declaration) });
 });
 
 router.get("/:id/attachments/:filename", authRequired, async (req, res) => {
@@ -171,15 +131,15 @@ router.get("/:id/attachments/:filename", authRequired, async (req, res) => {
     return res.status(400).json({ message: "Nome de anexo inválido." });
   }
 
-  const attachment = await prisma.attachment.findFirst({
+  const attachment = await prisma.declarationAttachment.findFirst({
     where: {
-      certificateId: id,
+      declarationId: id,
       filename,
     },
   });
 
   if (!attachment) {
-    return res.status(404).json({ message: "Anexo não encontrado para este atestado." });
+    return res.status(404).json({ message: "Anexo não encontrado para esta declaração." });
   }
 
   const fullPath = path.join(attachmentsDir, filename);
@@ -196,10 +156,10 @@ router.post("/", authRequired, runUpload, async (req, res) => {
 
   try {
     const normalized = normalizeBody(req.body);
-    const parsed = certificateSchema.safeParse(normalized);
+    const parsed = declarationSchema.safeParse(normalized);
     if (!parsed.success) {
       deleteFilesByName(uploadedFilenames);
-      return res.status(400).json({ message: "Dados inválidos para lançamento de atestado." });
+      return res.status(400).json({ message: "Dados inválidos para lançamento de declaração." });
     }
 
     if (uploadedFilenames.length > 3) {
@@ -207,36 +167,36 @@ router.post("/", authRequired, runUpload, async (req, res) => {
       return res.status(400).json({ message: "É permitido anexar no máximo 3 arquivos." });
     }
 
-    const dateResult = normalizeAfastamentoDates(parsed.data.startDate, parsed.data.endDate);
-    if (dateResult.error) {
+    const declarationValues = normalizeDeclarationValues(parsed.data);
+    if (declarationValues.error) {
       deleteFilesByName(uploadedFilenames);
-      return res.status(400).json({ message: dateResult.error });
+      return res.status(400).json({ message: declarationValues.error });
     }
 
-    const created = await prisma.certificate.create({
+    const created = await prisma.declaration.create({
       data: {
         employeeName: parsed.data.employeeName,
         cpf: parsed.data.cpf,
-        cid: parsed.data.cid || null,
-        startDate: dateResult.startDate,
-        endDate: dateResult.endDate,
+        declarationDate: declarationValues.declarationDate,
         registrationDate: nowInFortaleza().second(0).millisecond(0).toDate(),
-        totalDays: dateResult.totalDays,
+        startTime: declarationValues.startTime,
+        endTime: declarationValues.endTime,
+        totalMinutes: declarationValues.totalMinutes,
         createdById: req.user.userId,
-        attachments: {
+        declarationFiles: {
           create: uploadedFilenames.map((filename) => ({ filename })),
         },
       },
       include: {
-        attachments: true,
+        declarationFiles: true,
         createdBy: { select: { id: true, username: true } },
       },
     });
 
-    return res.status(201).json({ item: serializeCertificate(created) });
+    return res.status(201).json({ item: serializeDeclaration(created) });
   } catch (error) {
     deleteFilesByName(uploadedFilenames);
-    return res.status(500).json({ message: "Erro ao salvar atestado." });
+    return res.status(500).json({ message: "Erro ao salvar declaração." });
   }
 });
 
@@ -250,26 +210,24 @@ router.put("/:id", authRequired, runUpload, async (req, res) => {
   }
 
   try {
-    const existing = await prisma.certificate.findUnique({
+    const existing = await prisma.declaration.findUnique({
       where: { id },
-      include: {
-        attachments: true,
-      },
+      include: { declarationFiles: true },
     });
 
     if (!existing) {
       deleteFilesByName(uploadedFilenames);
-      return res.status(404).json({ message: "Atestado não encontrado." });
+      return res.status(404).json({ message: "Declaração não encontrada." });
     }
 
     const normalized = normalizeBody(req.body);
-    const parsed = certificateSchema.safeParse(normalized);
+    const parsed = declarationSchema.safeParse(normalized);
     if (!parsed.success) {
       deleteFilesByName(uploadedFilenames);
-      return res.status(400).json({ message: "Dados inválidos para edição de atestado." });
+      return res.status(400).json({ message: "Dados inválidos para edição de declaração." });
     }
 
-    let keepAttachmentNames = existing.attachments.map((a) => a.filename);
+    let keepAttachmentNames = existing.declarationFiles.map((a) => a.filename);
 
     if (typeof req.body.keepAttachmentNames === "string") {
       let parsedList;
@@ -287,52 +245,50 @@ router.put("/:id", authRequired, runUpload, async (req, res) => {
 
       keepAttachmentNames = parsedList
         .map((item) => String(item))
-        .filter((item) => existing.attachments.some((a) => a.filename === item));
+        .filter((item) => existing.declarationFiles.some((a) => a.filename === item));
     }
 
     if (keepAttachmentNames.length + uploadedFilenames.length > 3) {
       deleteFilesByName(uploadedFilenames);
-      return res.status(400).json({ message: "Máximo de 3 anexos por atestado." });
+      return res.status(400).json({ message: "Máximo de 3 anexos por declaração." });
     }
 
-    const dateResult = normalizeAfastamentoDates(parsed.data.startDate, parsed.data.endDate);
-    if (dateResult.error) {
+    const declarationValues = normalizeDeclarationValues(parsed.data);
+    if (declarationValues.error) {
       deleteFilesByName(uploadedFilenames);
-      return res.status(400).json({ message: dateResult.error });
+      return res.status(400).json({ message: declarationValues.error });
     }
 
-    const toDelete = existing.attachments
+    const toDelete = existing.declarationFiles
       .map((a) => a.filename)
       .filter((name) => !keepAttachmentNames.includes(name));
-
     const attachmentNames = [...keepAttachmentNames, ...uploadedFilenames];
 
-    const updated = await prisma.certificate.update({
+    const updated = await prisma.declaration.update({
       where: { id },
       data: {
         employeeName: parsed.data.employeeName,
         cpf: parsed.data.cpf,
-        cid: parsed.data.cid || null,
-        startDate: dateResult.startDate,
-        endDate: dateResult.endDate,
-        totalDays: dateResult.totalDays,
-        attachments: {
+        declarationDate: declarationValues.declarationDate,
+        startTime: declarationValues.startTime,
+        endTime: declarationValues.endTime,
+        totalMinutes: declarationValues.totalMinutes,
+        declarationFiles: {
           deleteMany: {},
           create: attachmentNames.map((filename) => ({ filename })),
         },
       },
       include: {
-        attachments: true,
+        declarationFiles: true,
         createdBy: { select: { id: true, username: true } },
       },
     });
 
     deleteFilesByName(toDelete);
-
-    return res.json({ item: serializeCertificate(updated) });
+    return res.json({ item: serializeDeclaration(updated) });
   } catch (error) {
     deleteFilesByName(uploadedFilenames);
-    return res.status(500).json({ message: "Erro ao editar atestado." });
+    return res.status(500).json({ message: "Erro ao editar declaração." });
   }
 });
 
@@ -342,20 +298,19 @@ router.delete("/:id", authRequired, async (req, res) => {
     return res.status(400).json({ message: "ID inválido." });
   }
 
-  const existing = await prisma.certificate.findUnique({
+  const existing = await prisma.declaration.findUnique({
     where: { id },
-    include: { attachments: true },
+    include: { declarationFiles: true },
   });
 
   if (!existing) {
-    return res.status(404).json({ message: "Atestado não encontrado." });
+    return res.status(404).json({ message: "Declaração não encontrada." });
   }
 
-  await prisma.certificate.delete({ where: { id } });
-  deleteFilesByName(existing.attachments.map((item) => item.filename));
+  await prisma.declaration.delete({ where: { id } });
+  deleteFilesByName(existing.declarationFiles.map((item) => item.filename));
 
-  return res.json({ message: "Atestado excluído com sucesso." });
+  return res.json({ message: "Declaração excluída com sucesso." });
 });
 
 module.exports = router;
-
