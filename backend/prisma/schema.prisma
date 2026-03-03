@@ -12,6 +12,17 @@ enum Role {
   RH
 }
 
+enum AuditAction {
+  CREATE
+  UPDATE
+  DELETE
+}
+
+enum AuditEntityType {
+  CERTIFICATE
+  DECLARATION
+}
+
 model User {
   id           Int           @id @default(autoincrement())
   username     String        @unique
@@ -21,6 +32,7 @@ model User {
   updatedAt    DateTime      @updatedAt
   certificates Certificate[]
   declarations Declaration[]
+  auditLogs    AuditLog[]    @relation("UserAuditLogs")
 }
 
 model Certificate {
@@ -84,5 +96,25 @@ model DeclarationAttachment {
   createdAt     DateTime    @default(now())
 
   @@index([declarationId])
+}
+
+model AuditLog {
+  id            Int             @id @default(autoincrement())
+  action        AuditAction
+  entityType    AuditEntityType
+  entityId      Int
+  performedById Int
+  performedBy   User            @relation("UserAuditLogs", fields: [performedById], references: [id])
+  employeeName  String
+  cpf           String
+  beforeData    Json?
+  afterData     Json?
+  changes       Json?
+  createdAt     DateTime        @default(now())
+
+  @@index([createdAt])
+  @@index([entityType, entityId])
+  @@index([performedById])
+  @@index([cpf])
 }
 

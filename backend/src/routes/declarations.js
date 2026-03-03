@@ -10,6 +10,7 @@ const { attachmentsDir } = require("../config");
 const { nowInFortaleza, parseDateInFortaleza } = require("../utils/date");
 const { buildDeclarationsWhere, buildPagination } = require("../utils/filters");
 const { serializeDeclaration } = require("../utils/serializers");
+const { buildDeclarationSnapshot, recordAuditLog } = require("../services/audit");
 
 const router = express.Router();
 
@@ -173,24 +174,36 @@ router.post("/", authRequired, runUpload, async (req, res) => {
       return res.status(400).json({ message: declarationValues.error });
     }
 
-    const created = await prisma.declaration.create({
-      data: {
-        employeeName: parsed.data.employeeName,
-        cpf: parsed.data.cpf,
-        declarationDate: declarationValues.declarationDate,
-        registrationDate: nowInFortaleza().second(0).millisecond(0).toDate(),
-        startTime: declarationValues.startTime,
-        endTime: declarationValues.endTime,
-        totalMinutes: declarationValues.totalMinutes,
-        createdById: req.user.userId,
-        declarationFiles: {
-          create: uploadedFilenames.map((filename) => ({ filename })),
+    const created = await prisma.$transaction(async (tx) => {
+      const createdItem = await tx.declaration.create({
+        data: {
+          employeeName: parsed.data.employeeName,
+          cpf: parsed.data.cpf,
+          declarationDate: declarationValues.declarationDate,
+          registrationDate: nowInFortaleza().second(0).millisecond(0).toDate(),
+          startTime: declarationValues.startTime,
+          endTime: declarationValues.endTime,
+          totalMinutes: declarationValues.totalMinutes,
+          createdById: req.user.userId,
+          declarationFiles: {
+            create: uploadedFilenames.map((filename) => ({ filename })),
+          },
         },
-      },
-      include: {
-        declarationFiles: true,
-        createdBy: { select: { id: true, username: true } },
-      },
+        include: {
+          declarationFiles: true,
+          createdBy: { select: { id: true, username: true } },
+        },
+      });
+
+      await recordAuditLog(tx, {
+        action: "CREATE",
+        entityType: "DECLARATION",
+        entityId: createdItem.id,
+        performedById: req.user.userId,
+        afterData: buildDeclarationSnapshot(createdItem),
+      });
+
+      return createdItem;
     });
 
     return res.status(201).json({ item: serializeDeclaration(created) });
@@ -264,24 +277,39 @@ router.put("/:id", authRequired, runUpload, async (req, res) => {
       .filter((name) => !keepAttachmentNames.includes(name));
     const attachmentNames = [...keepAttachmentNames, ...uploadedFilenames];
 
-    const updated = await prisma.declaration.update({
-      where: { id },
-      data: {
-        employeeName: parsed.data.employeeName,
-        cpf: parsed.data.cpf,
-        declarationDate: declarationValues.declarationDate,
-        startTime: declarationValues.startTime,
-        endTime: declarationValues.endTime,
-        totalMinutes: declarationValues.totalMinutes,
-        declarationFiles: {
-          deleteMany: {},
-          create: attachmentNames.map((filename) => ({ filename })),
+    const beforeData = buildDeclarationSnapshot(existing);
+
+    const updated = await prisma.$transaction(async (tx) => {
+      const updatedItem = await tx.declaration.update({
+        where: { id },
+        data: {
+          employeeName: parsed.data.employeeName,
+          cpf: parsed.data.cpf,
+          declarationDate: declarationValues.declarationDate,
+          startTime: declarationValues.startTime,
+          endTime: declarationValues.endTime,
+          totalMinutes: declarationValues.totalMinutes,
+          declarationFiles: {
+            deleteMany: {},
+            create: attachmentNames.map((filename) => ({ filename })),
+          },
         },
-      },
-      include: {
-        declarationFiles: true,
-        createdBy: { select: { id: true, username: true } },
-      },
+        include: {
+          declarationFiles: true,
+          createdBy: { select: { id: true, username: true } },
+        },
+      });
+
+      await recordAuditLog(tx, {
+        action: "UPDATE",
+        entityType: "DECLARATION",
+        entityId: updatedItem.id,
+        performedById: req.user.userId,
+        beforeData,
+        afterData: buildDeclarationSnapshot(updatedItem),
+      });
+
+      return updatedItem;
     });
 
     deleteFilesByName(toDelete);
@@ -307,7 +335,16 @@ router.delete("/:id", authRequired, async (req, res) => {
     return res.status(404).json({ message: "Declaração não encontrada." });
   }
 
-  await prisma.declaration.delete({ where: { id } });
+  await prisma.$transaction(async (tx) => {
+    await tx.declaration.delete({ where: { id } });
+    await recordAuditLog(tx, {
+      action: "DELETE",
+      entityType: "DECLARATION",
+      entityId: existing.id,
+      performedById: req.user.userId,
+      beforeData: buildDeclarationSnapshot(existing),
+    });
+  });
   deleteFilesByName(existing.declarationFiles.map((item) => item.filename));
 
   return res.json({ message: "Declaração excluída com sucesso." });

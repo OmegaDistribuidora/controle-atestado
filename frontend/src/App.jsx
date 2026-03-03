@@ -2,6 +2,7 @@ import { Navigate, Route, Routes } from "react-router-dom";
 import AppLayout from "./components/AppLayout";
 import ProtectedRoute from "./components/ProtectedRoute";
 import AnalyticsPage from "./pages/AnalyticsPage";
+import AuditPage from "./pages/AuditPage";
 import CertificatesPage from "./pages/CertificatesPage";
 import DeclarationsPage from "./pages/DeclarationsPage";
 import DashboardPage from "./pages/DashboardPage";
@@ -27,6 +28,7 @@ export default function App() {
         <Route path="analises" element={<AnalyticsPage />} />
         <Route path="analises-colaborador" element={<EmployeeAnalyticsPage />} />
         <Route path="usuarios" element={<UsersPage />} />
+        <Route path="auditoria" element={<AuditPage />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

@@ -10,6 +10,7 @@ const { attachmentsDir } = require("../config");
 const { normalizeAfastamentoDates, nowInFortaleza } = require("../utils/date");
 const { buildCertificatesWhere, buildPagination } = require("../utils/filters");
 const { serializeCertificate } = require("../utils/serializers");
+const { buildCertificateSnapshot, recordAuditLog } = require("../services/audit");
 
 const router = express.Router();
 
@@ -213,24 +214,36 @@ router.post("/", authRequired, runUpload, async (req, res) => {
       return res.status(400).json({ message: dateResult.error });
     }
 
-    const created = await prisma.certificate.create({
-      data: {
-        employeeName: parsed.data.employeeName,
-        cpf: parsed.data.cpf,
-        cid: parsed.data.cid || null,
-        startDate: dateResult.startDate,
-        endDate: dateResult.endDate,
-        registrationDate: nowInFortaleza().second(0).millisecond(0).toDate(),
-        totalDays: dateResult.totalDays,
-        createdById: req.user.userId,
-        attachments: {
-          create: uploadedFilenames.map((filename) => ({ filename })),
+    const created = await prisma.$transaction(async (tx) => {
+      const createdItem = await tx.certificate.create({
+        data: {
+          employeeName: parsed.data.employeeName,
+          cpf: parsed.data.cpf,
+          cid: parsed.data.cid || null,
+          startDate: dateResult.startDate,
+          endDate: dateResult.endDate,
+          registrationDate: nowInFortaleza().second(0).millisecond(0).toDate(),
+          totalDays: dateResult.totalDays,
+          createdById: req.user.userId,
+          attachments: {
+            create: uploadedFilenames.map((filename) => ({ filename })),
+          },
         },
-      },
-      include: {
-        attachments: true,
-        createdBy: { select: { id: true, username: true } },
-      },
+        include: {
+          attachments: true,
+          createdBy: { select: { id: true, username: true } },
+        },
+      });
+
+      await recordAuditLog(tx, {
+        action: "CREATE",
+        entityType: "CERTIFICATE",
+        entityId: createdItem.id,
+        performedById: req.user.userId,
+        afterData: buildCertificateSnapshot(createdItem),
+      });
+
+      return createdItem;
     });
 
     return res.status(201).json({ item: serializeCertificate(created) });
@@ -307,24 +320,39 @@ router.put("/:id", authRequired, runUpload, async (req, res) => {
 
     const attachmentNames = [...keepAttachmentNames, ...uploadedFilenames];
 
-    const updated = await prisma.certificate.update({
-      where: { id },
-      data: {
-        employeeName: parsed.data.employeeName,
-        cpf: parsed.data.cpf,
-        cid: parsed.data.cid || null,
-        startDate: dateResult.startDate,
-        endDate: dateResult.endDate,
-        totalDays: dateResult.totalDays,
-        attachments: {
-          deleteMany: {},
-          create: attachmentNames.map((filename) => ({ filename })),
+    const beforeData = buildCertificateSnapshot(existing);
+
+    const updated = await prisma.$transaction(async (tx) => {
+      const updatedItem = await tx.certificate.update({
+        where: { id },
+        data: {
+          employeeName: parsed.data.employeeName,
+          cpf: parsed.data.cpf,
+          cid: parsed.data.cid || null,
+          startDate: dateResult.startDate,
+          endDate: dateResult.endDate,
+          totalDays: dateResult.totalDays,
+          attachments: {
+            deleteMany: {},
+            create: attachmentNames.map((filename) => ({ filename })),
+          },
         },
-      },
-      include: {
-        attachments: true,
-        createdBy: { select: { id: true, username: true } },
-      },
+        include: {
+          attachments: true,
+          createdBy: { select: { id: true, username: true } },
+        },
+      });
+
+      await recordAuditLog(tx, {
+        action: "UPDATE",
+        entityType: "CERTIFICATE",
+        entityId: updatedItem.id,
+        performedById: req.user.userId,
+        beforeData,
+        afterData: buildCertificateSnapshot(updatedItem),
+      });
+
+      return updatedItem;
     });
 
     deleteFilesByName(toDelete);
@@ -351,7 +379,16 @@ router.delete("/:id", authRequired, async (req, res) => {
     return res.status(404).json({ message: "Atestado não encontrado." });
   }
 
-  await prisma.certificate.delete({ where: { id } });
+  await prisma.$transaction(async (tx) => {
+    await tx.certificate.delete({ where: { id } });
+    await recordAuditLog(tx, {
+      action: "DELETE",
+      entityType: "CERTIFICATE",
+      entityId: existing.id,
+      performedById: req.user.userId,
+      beforeData: buildCertificateSnapshot(existing),
+    });
+  });
   deleteFilesByName(existing.attachments.map((item) => item.filename));
 
   return res.json({ message: "Atestado excluído com sucesso." });

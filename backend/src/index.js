@@ -27,6 +27,7 @@ const certificateRoutes = require("./routes/certificates");
 const declarationRoutes = require("./routes/declarations");
 const dashboardRoutes = require("./routes/dashboard");
 const analyticsRoutes = require("./routes/analytics");
+const auditRoutes = require("./routes/audit");
 
 const app = express();
 
@@ -50,6 +51,7 @@ app.use("/api/certificates", certificateRoutes);
 app.use("/api/declarations", declarationRoutes);
 app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/analytics", analyticsRoutes);
+app.use("/api/audit", auditRoutes);
 
 const frontendDistPath = path.resolve(__dirname, "..", "..", "frontend", "dist");
 if (fs.existsSync(frontendDistPath)) {

@@ -1,4 +1,4 @@
-import { CalendarClock, ClipboardList, FileText, LayoutDashboard, LogOut, Users } from "lucide-react";
+import { CalendarClock, ClipboardList, FileText, LayoutDashboard, LogOut, Shield, Users } from "lucide-react";
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { useAuth } from "./AuthProvider";
 
@@ -34,10 +34,16 @@ export default function AppLayout() {
             );
           })}
           {user?.role === "ADMIN" && (
-            <NavLink to="/usuarios" className="nav-item">
-              <Users size={15} />
-              <span>Usuarios</span>
-            </NavLink>
+            <>
+              <NavLink to="/usuarios" className="nav-item">
+                <Users size={15} />
+                <span>Usuarios</span>
+              </NavLink>
+              <NavLink to="/auditoria" className="nav-item">
+                <Shield size={15} />
+                <span>Auditoria</span>
+              </NavLink>
+            </>
           )}
         </nav>
 
