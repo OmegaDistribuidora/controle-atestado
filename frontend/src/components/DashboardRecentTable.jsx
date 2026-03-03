@@ -19,8 +19,8 @@ export default function DashboardRecentTable({ items, onEdit, onDetails, onDelet
   }
 
   return (
-    <div className="table-wrap">
-      <table className="data-table">
+    <div className="table-wrap dashboard-table-wrap">
+      <table className="data-table dashboard-data-table">
         <thead>
           <tr>
             <th>Registro</th>

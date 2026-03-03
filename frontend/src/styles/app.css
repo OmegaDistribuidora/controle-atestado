@@ -95,7 +95,7 @@ p {
 .app-shell {
   min-height: 100vh;
   display: grid;
-  grid-template-columns: 220px 1fr;
+  grid-template-columns: 180px 1fr;
 }
 
 .sidebar {
@@ -164,7 +164,7 @@ p {
 }
 
 .main-area {
-  padding: 1rem;
+  padding: 0.85rem;
 }
 
 .page-stack {
@@ -263,6 +263,55 @@ p {
 .data-table th {
   color: var(--muted);
   font-weight: 600;
+}
+
+.dashboard-table-wrap {
+  overflow-x: visible;
+}
+
+.dashboard-data-table {
+  min-width: 0;
+  table-layout: fixed;
+}
+
+.dashboard-data-table th,
+.dashboard-data-table td {
+  padding: 0.5rem 0.4rem;
+  font-size: 0.82rem;
+}
+
+.dashboard-data-table th:nth-child(1),
+.dashboard-data-table td:nth-child(1) {
+  width: 132px;
+}
+
+.dashboard-data-table th:nth-child(2),
+.dashboard-data-table td:nth-child(2) {
+  width: 92px;
+}
+
+.dashboard-data-table th:nth-child(4),
+.dashboard-data-table td:nth-child(4) {
+  width: 118px;
+}
+
+.dashboard-data-table th:nth-child(6),
+.dashboard-data-table td:nth-child(6) {
+  width: 70px;
+}
+
+.dashboard-data-table th:nth-child(7),
+.dashboard-data-table td:nth-child(7) {
+  width: 108px;
+}
+
+.dashboard-data-table th:nth-child(3),
+.dashboard-data-table td:nth-child(3),
+.dashboard-data-table th:nth-child(5),
+.dashboard-data-table td:nth-child(5) {
+  white-space: normal;
+  line-height: 1.25;
+  word-break: break-word;
 }
 
 .primary-btn,
