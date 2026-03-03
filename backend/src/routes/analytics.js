@@ -32,6 +32,25 @@ function isPlaceholderCpf(cpf) {
   return /^(\d)\1{10}$/.test(cpf);
 }
 
+function buildCollaboratorKey(cpf, employeeName) {
+  const normalizedName = normalizeEmployeeName(employeeName);
+  return isPlaceholderCpf(cpf) ? `${cpf}|${normalizedName}` : cpf;
+}
+
+function buildCollaboratorWhere(cpf, employeeName) {
+  if (!cpf) return {};
+  if (isPlaceholderCpf(cpf) && employeeName) {
+    return {
+      cpf,
+      employeeName: {
+        equals: employeeName,
+        mode: "insensitive",
+      },
+    };
+  }
+  return { cpf };
+}
+
 function parseSort(query, type) {
   const allowedCertificate = new Set([
     "employeeName",
@@ -77,21 +96,76 @@ function sortRows(rows, sortBy, sortDir) {
   return sorted;
 }
 
+router.get("/collaborators", authRequired, async (req, res) => {
+  const [certificates, declarations] = await Promise.all([
+    prisma.certificate.findMany({
+      select: {
+        employeeName: true,
+        cpf: true,
+        registrationDate: true,
+      },
+      orderBy: { registrationDate: "desc" },
+    }),
+    prisma.declaration.findMany({
+      select: {
+        employeeName: true,
+        cpf: true,
+        registrationDate: true,
+      },
+      orderBy: { registrationDate: "desc" },
+    }),
+  ]);
+
+  const map = new Map();
+  for (const item of [...certificates, ...declarations]) {
+    const cpf = normalizeCpf(item.cpf);
+    const employeeName = String(item.employeeName || "").trim();
+    if (!employeeName) continue;
+
+    const key = buildCollaboratorKey(cpf, employeeName);
+    if (!map.has(key)) {
+      map.set(key, {
+        key,
+        cpf,
+        employeeName,
+        lastRegistrationDate: item.registrationDate,
+      });
+      continue;
+    }
+
+    const current = map.get(key);
+    if (new Date(item.registrationDate).getTime() > new Date(current.lastRegistrationDate).getTime()) {
+      current.employeeName = employeeName;
+      current.lastRegistrationDate = item.registrationDate;
+    }
+  }
+
+  const items = Array.from(map.values()).sort((a, b) =>
+    a.employeeName.localeCompare(b.employeeName, "pt-BR", { sensitivity: "base" })
+  );
+
+  return res.json({ items });
+});
+
 router.get("/yearly", authRequired, async (req, res) => {
   const requestedYear = Number(req.query.year) || dayjs().tz(fortalezaTz).year();
+  const collaboratorCpf = normalizeCpf(req.query.cpf);
+  const collaboratorEmployeeName = String(req.query.employeeName || "").trim();
 
   if (requestedYear < 2000 || requestedYear > 2100) {
-    return res.status(400).json({ message: "Ano inválido." });
+    return res.status(400).json({ message: "Ano invalido." });
   }
 
   const yearStart = dayjs.tz(`${requestedYear}-01-01`, "YYYY-MM-DD", fortalezaTz).startOf("day");
   const yearEnd = dayjs.tz(`${requestedYear}-12-31`, "YYYY-MM-DD", fortalezaTz).endOf("day");
+  const collaboratorWhere = buildCollaboratorWhere(collaboratorCpf, collaboratorEmployeeName);
 
   const [certificates, declarations] = await Promise.all([
     prisma.certificate.findMany({
       where: {
         startDate: { lte: yearEnd.toDate() },
         endDate: { gte: yearStart.toDate() },
+        ...collaboratorWhere,
       },
       select: {
         startDate: true,
@@ -102,6 +176,7 @@ router.get("/yearly", authRequired, async (req, res) => {
     prisma.declaration.findMany({
       where: {
         declarationDate: { gte: yearStart.toDate(), lte: yearEnd.toDate() },
+        ...collaboratorWhere,
       },
       select: {
         declarationDate: true,
@@ -185,8 +260,7 @@ router.get("/employees", authRequired, async (req, res) => {
       const nameNormalized = normalizeEmployeeName(item.employeeName);
       if (!nameNormalized) continue;
 
-      const groupKey = isPlaceholderCpf(cpf) ? `${cpf}|${nameNormalized}` : cpf;
-
+      const groupKey = buildCollaboratorKey(cpf, item.employeeName);
       if (!map.has(groupKey)) {
         map.set(groupKey, {
           employeeName: item.employeeName,
@@ -233,8 +307,7 @@ router.get("/employees", authRequired, async (req, res) => {
     const nameNormalized = normalizeEmployeeName(item.employeeName);
     if (!nameNormalized) continue;
 
-    const groupKey = isPlaceholderCpf(cpf) ? `${cpf}|${nameNormalized}` : cpf;
-
+    const groupKey = buildCollaboratorKey(cpf, item.employeeName);
     if (!map.has(groupKey)) {
       map.set(groupKey, {
         employeeName: item.employeeName,
@@ -401,4 +474,3 @@ router.get("/employees/:cpf/details", authRequired, async (req, res) => {
 });
 
 module.exports = router;
-
