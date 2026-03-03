@@ -9,11 +9,6 @@ Sistema web para controle de atestados medicos com perfis `admin` e `rh`, dashbo
 - Banco: PostgreSQL (Railway)
 - Arquivos anexos: volume Railway em `/anexos`
 
-## Usuarios iniciais
-
-- `admin` / `Omega@123`
-- `rh` / `Carlos@123`
-
 > Os usuarios sao criados automaticamente na inicializacao (upsert).
 
 ## Requisitos
