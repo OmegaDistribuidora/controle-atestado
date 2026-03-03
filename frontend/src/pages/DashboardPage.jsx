@@ -127,7 +127,7 @@ export default function DashboardPage() {
         </div>
         <div className="header-actions">
           <button
-            className="primary-btn"
+            className="primary-btn action-cert-btn"
             onClick={() => {
               setEditingCertificate(null);
               setCertificateModalOpen(true);
@@ -136,7 +136,7 @@ export default function DashboardPage() {
             Novo atestado
           </button>
           <button
-            className="ghost-btn"
+            className="primary-btn action-decl-btn"
             onClick={() => {
               setEditingDeclaration(null);
               setDeclarationModalOpen(true);
@@ -148,7 +148,6 @@ export default function DashboardPage() {
       </header>
 
       <section className="kpi-block">
-        <h3>Indicadores de atestados</h3>
         <div className="kpi-grid kpi-grid-expanded">
           <KpiCard label="Total de atestados" value={summary.totalCertificates} />
           <KpiCard label="Total de dias de atestado" value={summary.totalDays} />
@@ -158,7 +157,6 @@ export default function DashboardPage() {
       </section>
 
       <section className="kpi-block">
-        <h3>Indicadores de declaracoes</h3>
         <div className="kpi-grid kpi-grid-expanded">
           <KpiCard label="Total de declaracoes" value={summary.totalDeclarations} />
           <KpiCard label="Total de horas de declaracoes" value={summary.totalDeclarationHours} />

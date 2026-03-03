@@ -43,14 +43,14 @@ export default function AnalyticsPage() {
         <div className="analytics-toggle">
           <button
             type="button"
-            className={`ghost-btn ${viewMode === "certificate" ? "active-switch" : ""}`}
+            className={`ghost-btn ${viewMode === "certificate" ? "active-switch active-cert" : ""}`}
             onClick={() => setViewMode("certificate")}
           >
             Atestados
           </button>
           <button
             type="button"
-            className={`ghost-btn ${viewMode === "declaration" ? "active-switch" : ""}`}
+            className={`ghost-btn ${viewMode === "declaration" ? "active-switch active-decl" : ""}`}
             onClick={() => setViewMode("declaration")}
           >
             Declaracoes

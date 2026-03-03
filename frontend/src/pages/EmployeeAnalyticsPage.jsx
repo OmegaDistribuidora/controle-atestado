@@ -95,7 +95,11 @@ export default function EmployeeAnalyticsPage() {
             <button
               key={option.value}
               type="button"
-              className={`ghost-btn ${type === option.value ? "active-switch" : ""}`}
+              className={`ghost-btn ${
+                type === option.value
+                  ? `active-switch ${option.value === "certificate" ? "active-cert" : "active-decl"}`
+                  : ""
+              }`}
               onClick={() => setType(option.value)}
             >
               {option.label}

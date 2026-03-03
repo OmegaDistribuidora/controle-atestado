@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
-import { X } from "lucide-react";
-import { apiJson } from "../services/api";
+import { Eye, X } from "lucide-react";
+import { apiBlob, apiJson } from "../services/api";
 import { formatCpf } from "../services/cpf";
 import { formatDate, formatDateTime } from "../services/date";
 
@@ -33,6 +33,32 @@ export default function EmployeeAnalyticsDetailsModal({ open, onClose, token, cp
     () => (isDeclaration ? "Ficha tecnica de declaracoes" : "Ficha tecnica de atestados"),
     [isDeclaration]
   );
+
+  async function handleOpenAttachment(item) {
+    if (!item.firstAttachment) return;
+
+    const previewTab = window.open("", "_blank");
+    if (!previewTab) {
+      window.alert("O navegador bloqueou a abertura da nova aba. Libere popups para visualizar o anexo.");
+      return;
+    }
+
+    previewTab.document.write("<p style=\"font-family:Arial,sans-serif;padding:12px\">Carregando anexo...</p>");
+
+    try {
+      const safeName = encodeURIComponent(item.firstAttachment);
+      const path = isDeclaration
+        ? `/declarations/${item.id}/attachments/${safeName}`
+        : `/certificates/${item.id}/attachments/${safeName}`;
+      const blob = await apiBlob(path, { token });
+      const url = URL.createObjectURL(blob);
+      previewTab.location.href = url;
+      window.setTimeout(() => URL.revokeObjectURL(url), 60000);
+    } catch (error) {
+      previewTab.close();
+      window.alert(error.message);
+    }
+  }
 
   if (!open) return null;
 
@@ -86,6 +112,7 @@ export default function EmployeeAnalyticsDetailsModal({ open, onClose, token, cp
                     {isDeclaration ? <th>Data</th> : <th>Periodo</th>}
                     {isDeclaration ? <th>Horarios</th> : <th>CID</th>}
                     <th>{isDeclaration ? "Horas" : "Dias"}</th>
+                    <th>Anexo</th>
                     <th>Lancado por</th>
                   </tr>
                 </thead>
@@ -108,6 +135,19 @@ export default function EmployeeAnalyticsDetailsModal({ open, onClose, token, cp
                         <td>{item.cid}</td>
                       )}
                       <td>{isDeclaration ? item.totalHours : item.totalDays}</td>
+                      <td>
+                        {item.firstAttachment ? (
+                          <button
+                            className="icon-btn"
+                            title="Ver anexo"
+                            onClick={() => handleOpenAttachment(item)}
+                          >
+                            <Eye size={14} />
+                          </button>
+                        ) : (
+                          "-"
+                        )}
+                      </td>
                       <td>{item.launchedBy}</td>
                     </tr>
                   ))}

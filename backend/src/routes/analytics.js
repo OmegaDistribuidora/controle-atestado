@@ -296,6 +296,11 @@ router.get("/employees/:cpf/details", authRequired, async (req, res) => {
         startTime: true,
         endTime: true,
         totalMinutes: true,
+        declarationFiles: {
+          select: { filename: true },
+          orderBy: { createdAt: "asc" },
+          take: 1,
+        },
         createdBy: { select: { username: true } },
       },
     });
@@ -328,6 +333,7 @@ router.get("/employees/:cpf/details", authRequired, async (req, res) => {
         startTime: item.startTime,
         endTime: item.endTime,
         totalHours: Number(((item.totalMinutes || 0) / 60).toFixed(2)),
+        firstAttachment: item.declarationFiles?.[0]?.filename || null,
         launchedBy: item.createdBy?.username || "-",
       })),
     });
@@ -345,6 +351,11 @@ router.get("/employees/:cpf/details", authRequired, async (req, res) => {
       endDate: true,
       totalDays: true,
       registrationDate: true,
+      attachments: {
+        select: { filename: true },
+        orderBy: { createdAt: "asc" },
+        take: 1,
+      },
       createdBy: { select: { username: true } },
     },
   });
@@ -383,6 +394,7 @@ router.get("/employees/:cpf/details", authRequired, async (req, res) => {
       endDate: item.endDate,
       totalDays: item.totalDays,
       cid: item.cid || "-",
+      firstAttachment: item.attachments?.[0]?.filename || null,
       launchedBy: item.createdBy?.username || "-",
     })),
   });
