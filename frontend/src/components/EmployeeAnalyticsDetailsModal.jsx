@@ -4,7 +4,7 @@ import { apiJson } from "../services/api";
 import { formatCpf } from "../services/cpf";
 import { formatDate, formatDateTime } from "../services/date";
 
-export default function EmployeeAnalyticsDetailsModal({ open, onClose, token, cpf, type }) {
+export default function EmployeeAnalyticsDetailsModal({ open, onClose, token, cpf, employeeName, type }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [payload, setPayload] = useState(null);
@@ -16,11 +16,14 @@ export default function EmployeeAnalyticsDetailsModal({ open, onClose, token, cp
     setError("");
     setPayload(null);
 
-    apiJson(`/analytics/employees/${cpf}/details?type=${type}`, { token })
+    const query = new URLSearchParams({ type });
+    if (employeeName) query.set("employeeName", employeeName);
+
+    apiJson(`/analytics/employees/${cpf}/details?${query.toString()}`, { token })
       .then((response) => setPayload(response))
       .catch((fetchError) => setError(fetchError.message))
       .finally(() => setLoading(false));
-  }, [open, cpf, type, token]);
+  }, [open, cpf, employeeName, type, token]);
 
   const summary = payload?.summary || null;
   const items = payload?.items || [];

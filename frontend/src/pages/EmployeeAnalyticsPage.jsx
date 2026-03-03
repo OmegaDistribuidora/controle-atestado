@@ -43,6 +43,7 @@ export default function EmployeeAnalyticsPage() {
 
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [selectedCpf, setSelectedCpf] = useState("");
+  const [selectedEmployeeName, setSelectedEmployeeName] = useState("");
 
   const columns = useMemo(() => getColumns(type), [type]);
 
@@ -125,9 +126,9 @@ export default function EmployeeAnalyticsPage() {
               </thead>
               <tbody>
                 {items.map((item) => (
-                  <tr key={item.cpf}>
+                  <tr key={`${item.cpf}-${item.employeeName}`}>
                     {columns.map((column) => (
-                      <td key={`${item.cpf}-${column.key}`}>{renderCell(item, column.key)}</td>
+                      <td key={`${item.cpf}-${item.employeeName}-${column.key}`}>{renderCell(item, column.key)}</td>
                     ))}
                     <td>
                       <button
@@ -135,6 +136,7 @@ export default function EmployeeAnalyticsPage() {
                         title="Ver ficha tecnica"
                         onClick={() => {
                           setSelectedCpf(item.cpf);
+                          setSelectedEmployeeName(item.employeeName);
                           setDetailsOpen(true);
                         }}
                       >
@@ -154,6 +156,7 @@ export default function EmployeeAnalyticsPage() {
         onClose={() => setDetailsOpen(false)}
         token={token}
         cpf={selectedCpf}
+        employeeName={selectedEmployeeName}
         type={type}
       />
     </section>

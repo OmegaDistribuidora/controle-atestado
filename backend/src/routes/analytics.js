@@ -20,6 +20,18 @@ function normalizeCpf(input) {
     .slice(0, 11);
 }
 
+function normalizeEmployeeName(input) {
+  return String(input || "")
+    .trim()
+    .toUpperCase()
+    .replace(/\s+/g, " ");
+}
+
+function isPlaceholderCpf(cpf) {
+  if (!cpf || cpf.length !== 11) return true;
+  return /^(\d)\1{10}$/.test(cpf);
+}
+
 function parseSort(query, type) {
   const allowedCertificate = new Set([
     "employeeName",
@@ -170,10 +182,13 @@ router.get("/employees", authRequired, async (req, res) => {
     const map = new Map();
     for (const item of rows) {
       const cpf = normalizeCpf(item.cpf);
-      if (!cpf) continue;
+      const nameNormalized = normalizeEmployeeName(item.employeeName);
+      if (!nameNormalized) continue;
 
-      if (!map.has(cpf)) {
-        map.set(cpf, {
+      const groupKey = isPlaceholderCpf(cpf) ? `${cpf}|${nameNormalized}` : cpf;
+
+      if (!map.has(groupKey)) {
+        map.set(groupKey, {
           employeeName: item.employeeName,
           cpf,
           launchesCount: 0,
@@ -183,7 +198,7 @@ router.get("/employees", authRequired, async (req, res) => {
         });
       }
 
-      const row = map.get(cpf);
+      const row = map.get(groupKey);
       row.launchesCount += 1;
       row.totalMinutes += item.totalMinutes || 0;
       if (new Date(item.registrationDate).getTime() > new Date(row.lastRegistrationDate).getTime()) {
@@ -215,10 +230,13 @@ router.get("/employees", authRequired, async (req, res) => {
   const map = new Map();
   for (const item of rows) {
     const cpf = normalizeCpf(item.cpf);
-    if (!cpf) continue;
+    const nameNormalized = normalizeEmployeeName(item.employeeName);
+    if (!nameNormalized) continue;
 
-    if (!map.has(cpf)) {
-      map.set(cpf, {
+    const groupKey = isPlaceholderCpf(cpf) ? `${cpf}|${nameNormalized}` : cpf;
+
+    if (!map.has(groupKey)) {
+      map.set(groupKey, {
         employeeName: item.employeeName,
         cpf,
         launchesCount: 0,
@@ -229,7 +247,7 @@ router.get("/employees", authRequired, async (req, res) => {
       });
     }
 
-    const row = map.get(cpf);
+    const row = map.get(groupKey);
     row.launchesCount += 1;
     row.totalDays += item.totalDays || 0;
     if (item.cid) row.cids.add(item.cid);
@@ -258,13 +276,14 @@ router.get("/employees", authRequired, async (req, res) => {
 router.get("/employees/:cpf/details", authRequired, async (req, res) => {
   const cpf = normalizeCpf(req.params.cpf);
   const type = String(req.query.type || "certificate").toLowerCase() === "declaration" ? "declaration" : "certificate";
+  const employeeNameFilter = normalizeEmployeeName(req.query.employeeName || "");
 
   if (!cpf) {
     return res.status(400).json({ message: "CPF invalido." });
   }
 
   if (type === "declaration") {
-    const declarations = await prisma.declaration.findMany({
+    let declarations = await prisma.declaration.findMany({
       where: { cpf },
       orderBy: { registrationDate: "desc" },
       select: {
@@ -279,6 +298,12 @@ router.get("/employees/:cpf/details", authRequired, async (req, res) => {
         createdBy: { select: { username: true } },
       },
     });
+
+    if (employeeNameFilter) {
+      declarations = declarations.filter(
+        (item) => normalizeEmployeeName(item.employeeName) === employeeNameFilter
+      );
+    }
 
     if (!declarations.length) {
       return res.status(404).json({ message: "Nenhum registro encontrado para este colaborador." });
@@ -307,7 +332,7 @@ router.get("/employees/:cpf/details", authRequired, async (req, res) => {
     });
   }
 
-  const certificates = await prisma.certificate.findMany({
+  let certificates = await prisma.certificate.findMany({
     where: { cpf },
     orderBy: { registrationDate: "desc" },
     select: {
@@ -322,6 +347,12 @@ router.get("/employees/:cpf/details", authRequired, async (req, res) => {
       createdBy: { select: { username: true } },
     },
   });
+
+  if (employeeNameFilter) {
+    certificates = certificates.filter(
+      (item) => normalizeEmployeeName(item.employeeName) === employeeNameFilter
+    );
+  }
 
   if (!certificates.length) {
     return res.status(404).json({ message: "Nenhum registro encontrado para este colaborador." });
