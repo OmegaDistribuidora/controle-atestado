@@ -23,13 +23,6 @@ function daysInMonth(year, monthIndex) {
   return new Date(year, monthIndex + 1, 0).getDate();
 }
 
-function getCellType(certificateCount, declarationCount) {
-  if (certificateCount > 0 && declarationCount > 0) return "mixed";
-  if (certificateCount > 0) return "certificate";
-  if (declarationCount > 0) return "declaration";
-  return "empty";
-}
-
 function mixHexColor(fromHex, toHex, t) {
   const from = fromHex.replace("#", "");
   const to = toHex.replace("#", "");
@@ -51,10 +44,13 @@ function mixHexColor(fromHex, toHex, t) {
 
 export default function YearCalendar({
   year,
+  viewMode = "certificate",
   certificateCounts = {},
   declarationCounts = {},
-  maxTotalCount = 0,
 }) {
+  const selectedCounts = viewMode === "declaration" ? declarationCounts : certificateCounts;
+  const maxCount = Math.max(...Object.values(selectedCounts), 0);
+
   return (
     <section className="year-grid">
       {MONTHS.map((monthLabel, monthIndex) => {
@@ -68,13 +64,11 @@ export default function YearCalendar({
 
         for (let day = 1; day <= totalDays; day += 1) {
           const key = `${year}-${pad(monthIndex + 1)}-${pad(day)}`;
-          const certificateCount = certificateCounts[key] || 0;
-          const declarationCount = declarationCounts[key] || 0;
-          const totalCount = certificateCount + declarationCount;
-          const type = getCellType(certificateCount, declarationCount);
-          const normalizedIntensity = totalCount > 0 ? totalCount / Math.max(maxTotalCount || 1, 1) : 0;
+          const count = selectedCounts[key] || 0;
+          const normalizedIntensity = count > 0 ? count / Math.max(maxCount || 1, 1) : 0;
           const certColor = mixHexColor("#cb945d", "#663b1d", normalizedIntensity);
           const declColor = mixHexColor("#53a8a0", "#1f5753", normalizedIntensity);
+          const typeClass = viewMode === "declaration" ? "declaration" : "certificate";
 
           const style = {
             "--cert-color": certColor,
@@ -84,15 +78,18 @@ export default function YearCalendar({
           cells.push(
             <span
               key={key}
-              className={`day-cell ${type !== "empty" ? `has-data ${type}` : ""}`}
-              style={type === "empty" ? undefined : style}
+              className={`day-cell ${count > 0 ? `has-data ${typeClass}` : ""}`}
+              style={count > 0 ? style : undefined}
             >
               {day}
-              {totalCount > 0 && (
+              {count > 0 && (
                 <span className="day-tooltip">
-                  <strong>{totalCount} registros no dia</strong>
-                  <span>{certificateCount} funcionarios afastados</span>
-                  <span>{declarationCount} declaracoes</span>
+                  <strong>{count} registros no dia</strong>
+                  <span>
+                    {viewMode === "declaration"
+                      ? `${count} colaboradores com declaracao`
+                      : `${count} funcionarios afastados`}
+                  </span>
                 </span>
               )}
             </span>

@@ -47,6 +47,15 @@ export default function DashboardPage() {
   const [refreshKey, setRefreshKey] = useState(0);
 
   const todayLabel = useMemo(() => getTodayFortalezaLabel(), []);
+  const avgDaysPerCertificate = useMemo(() => {
+    if (!summary.totalCertificates) return 0;
+    return Number((summary.totalDays / summary.totalCertificates).toFixed(2));
+  }, [summary.totalCertificates, summary.totalDays]);
+
+  const avgHoursPerDeclaration = useMemo(() => {
+    if (!summary.totalDeclarations) return 0;
+    return Number((summary.totalDeclarationHours / summary.totalDeclarations).toFixed(2));
+  }, [summary.totalDeclarations, summary.totalDeclarationHours]);
 
   useEffect(() => {
     apiJson("/dashboard/summary", { token })
@@ -138,13 +147,24 @@ export default function DashboardPage() {
         </div>
       </header>
 
-      <section className="kpi-grid kpi-grid-expanded">
-        <KpiCard label="Total de atestados" value={summary.totalCertificates} />
-        <KpiCard label="Total de declaracoes" value={summary.totalDeclarations} />
-        <KpiCard label="Total de dias de atestado" value={summary.totalDays} />
-        <KpiCard label="Total de horas de declaracoes" value={summary.totalDeclarationHours} />
-        <KpiCard label="Funcionarios afastados hoje" value={summary.activeEmployeesToday} />
-        <KpiCard label="Declaracoes hoje" value={summary.declarationsToday} />
+      <section className="kpi-block">
+        <h3>Indicadores de atestados</h3>
+        <div className="kpi-grid kpi-grid-expanded">
+          <KpiCard label="Total de atestados" value={summary.totalCertificates} />
+          <KpiCard label="Total de dias de atestado" value={summary.totalDays} />
+          <KpiCard label="Funcionarios afastados hoje" value={summary.activeEmployeesToday} />
+          <KpiCard label="Media de dias por atestado" value={avgDaysPerCertificate} />
+        </div>
+      </section>
+
+      <section className="kpi-block">
+        <h3>Indicadores de declaracoes</h3>
+        <div className="kpi-grid kpi-grid-expanded">
+          <KpiCard label="Total de declaracoes" value={summary.totalDeclarations} />
+          <KpiCard label="Total de horas de declaracoes" value={summary.totalDeclarationHours} />
+          <KpiCard label="Declaracoes hoje" value={summary.declarationsToday} />
+          <KpiCard label="Media de horas por declaracao" value={avgHoursPerDeclaration} />
+        </div>
       </section>
 
       <section className="panel">

@@ -6,9 +6,9 @@ import { apiJson } from "../services/api";
 export default function AnalyticsPage() {
   const { token } = useAuth();
   const [year, setYear] = useState(new Date().getFullYear());
+  const [viewMode, setViewMode] = useState("certificate");
   const [certificateCounts, setCertificateCounts] = useState({});
   const [declarationCounts, setDeclarationCounts] = useState({});
-  const [maxTotalCount, setMaxTotalCount] = useState(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -20,7 +20,6 @@ export default function AnalyticsPage() {
       .then((payload) => {
         setCertificateCounts(payload.certificateCounts || {});
         setDeclarationCounts(payload.declarationCounts || {});
-        setMaxTotalCount(payload.maxTotalCount || 0);
       })
       .catch((fetchError) => setError(fetchError.message))
       .finally(() => setLoading(false));
@@ -41,15 +40,21 @@ export default function AnalyticsPage() {
       </header>
 
       <section className="panel">
-        <div className="analytics-legend">
-          <span className="legend-item">
-            <i className="legend-dot cert" />
+        <div className="analytics-toggle">
+          <button
+            type="button"
+            className={`ghost-btn ${viewMode === "certificate" ? "active-switch" : ""}`}
+            onClick={() => setViewMode("certificate")}
+          >
             Atestados
-          </span>
-          <span className="legend-item">
-            <i className="legend-dot decl" />
+          </button>
+          <button
+            type="button"
+            className={`ghost-btn ${viewMode === "declaration" ? "active-switch" : ""}`}
+            onClick={() => setViewMode("declaration")}
+          >
             Declaracoes
-          </span>
+          </button>
         </div>
 
         {loading ? (
@@ -57,9 +62,9 @@ export default function AnalyticsPage() {
         ) : (
           <YearCalendar
             year={year}
+            viewMode={viewMode}
             certificateCounts={certificateCounts}
             declarationCounts={declarationCounts}
-            maxTotalCount={maxTotalCount}
           />
         )}
       </section>

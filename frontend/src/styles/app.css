@@ -207,7 +207,17 @@ p {
 }
 
 .kpi-grid-expanded {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.kpi-block {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.kpi-block h3 {
+  font-size: 0.95rem;
+  color: var(--muted);
 }
 
 .kpi-card {
@@ -569,33 +579,10 @@ p {
   align-items: end;
 }
 
-.analytics-legend {
+.analytics-toggle {
   display: inline-flex;
   align-items: center;
   gap: 0.7rem;
-}
-
-.legend-item {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.35rem;
-  color: var(--muted);
-  font-size: 0.83rem;
-}
-
-.legend-dot {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  display: inline-block;
-}
-
-.legend-dot.cert {
-  background: #d58e4b;
-}
-
-.legend-dot.decl {
-  background: #3ba89e;
 }
 
 .year-grid {
@@ -710,6 +697,7 @@ p {
   }
 
   .kpi-grid,
+  .kpi-grid-expanded,
   .filter-grid,
   .inline-form,
   .year-grid,
