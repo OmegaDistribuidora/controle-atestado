@@ -277,6 +277,7 @@ router.get("/employees/:cpf/details", authRequired, async (req, res) => {
   const cpf = normalizeCpf(req.params.cpf);
   const type = String(req.query.type || "certificate").toLowerCase() === "declaration" ? "declaration" : "certificate";
   const employeeNameFilter = normalizeEmployeeName(req.query.employeeName || "");
+  const shouldApplyNameFilter = isPlaceholderCpf(cpf) && Boolean(employeeNameFilter);
 
   if (!cpf) {
     return res.status(400).json({ message: "CPF invalido." });
@@ -299,7 +300,7 @@ router.get("/employees/:cpf/details", authRequired, async (req, res) => {
       },
     });
 
-    if (employeeNameFilter) {
+    if (shouldApplyNameFilter) {
       declarations = declarations.filter(
         (item) => normalizeEmployeeName(item.employeeName) === employeeNameFilter
       );
@@ -348,7 +349,7 @@ router.get("/employees/:cpf/details", authRequired, async (req, res) => {
     },
   });
 
-  if (employeeNameFilter) {
+  if (shouldApplyNameFilter) {
     certificates = certificates.filter(
       (item) => normalizeEmployeeName(item.employeeName) === employeeNameFilter
     );
