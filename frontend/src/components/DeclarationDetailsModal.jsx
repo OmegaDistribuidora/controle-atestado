@@ -7,16 +7,22 @@ export default function DeclarationDetailsModal({ open, onClose, token, item }) 
   if (!open || !item) return null;
 
   async function handleOpenAttachment(filename) {
+    const previewTab = window.open("", "_blank");
+    if (!previewTab) {
+      window.alert("O navegador bloqueou a abertura da nova aba. Libere popups para visualizar o anexo.");
+      return;
+    }
+
+    previewTab.document.write("<p style=\"font-family:Arial,sans-serif;padding:12px\">Carregando anexo...</p>");
+
     try {
       const safeName = encodeURIComponent(filename);
       const blob = await apiBlob(`/declarations/${item.id}/attachments/${safeName}`, { token });
       const url = URL.createObjectURL(blob);
-      const opened = window.open(url, "_blank", "noopener,noreferrer");
-      if (!opened) {
-        window.location.href = url;
-      }
+      previewTab.location.href = url;
       window.setTimeout(() => URL.revokeObjectURL(url), 60000);
     } catch (error) {
+      previewTab.close();
       window.alert(error.message);
     }
   }
