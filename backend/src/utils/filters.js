@@ -66,7 +66,8 @@ function buildCertificatesWhere(query) {
 
   const periodRange = toDateRangeByPeriod(query.period, query.customFrom, query.customTo);
   if (periodRange) {
-    where.registrationDate = periodRange;
+    where.startDate = { lte: periodRange.lte };
+    where.endDate = { gte: periodRange.gte };
   }
 
   return where;
@@ -85,7 +86,7 @@ function buildDeclarationsWhere(query) {
 
   const periodRange = toDateRangeByPeriod(query.period, query.customFrom, query.customTo);
   if (periodRange) {
-    where.registrationDate = periodRange;
+    where.declarationDate = periodRange;
   }
 
   return where;
