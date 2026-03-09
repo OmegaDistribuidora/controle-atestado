@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
-import { apiJson } from "../services/api";
+import { apiJson, AUTH_UNAUTHORIZED_EVENT } from "../services/api";
 
 const STORAGE_KEY = "controle-atestado-auth";
 
@@ -19,19 +19,20 @@ export function AuthProvider({ children }) {
   const initial = readStorage();
   const [token, setToken] = useState(initial.token || null);
   const [user, setUser] = useState(initial.user || null);
-  const [loading, setLoading] = useState(Boolean(initial.token && !initial.user));
+  const [loading, setLoading] = useState(Boolean(initial.token));
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify({ token, user }));
   }, [token, user]);
 
   useEffect(() => {
-    if (!token || user) {
+    if (!token) {
       setLoading(false);
       return;
     }
 
     let alive = true;
+    setLoading(true);
     apiJson("/auth/me", { token })
       .then((payload) => {
         if (alive) setUser(payload.user);
@@ -49,7 +50,20 @@ export function AuthProvider({ children }) {
     return () => {
       alive = false;
     };
-  }, [token, user]);
+  }, [token]);
+
+  useEffect(() => {
+    function handleUnauthorized() {
+      setToken(null);
+      setUser(null);
+      setLoading(false);
+    }
+
+    window.addEventListener(AUTH_UNAUTHORIZED_EVENT, handleUnauthorized);
+    return () => {
+      window.removeEventListener(AUTH_UNAUTHORIZED_EVENT, handleUnauthorized);
+    };
+  }, []);
 
   const value = useMemo(
     () => ({

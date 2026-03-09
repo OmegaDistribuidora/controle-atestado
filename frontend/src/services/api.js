@@ -1,4 +1,15 @@
 const API_BASE = "/api";
+const AUTH_UNAUTHORIZED_EVENT = "auth:unauthorized";
+
+function notifyUnauthorized(token, message) {
+  if (!token || typeof window === "undefined") return;
+
+  window.dispatchEvent(
+    new CustomEvent(AUTH_UNAUTHORIZED_EVENT, {
+      detail: { message },
+    })
+  );
+}
 
 function buildQuery(params = {}) {
   const query = new URLSearchParams();
@@ -25,6 +36,9 @@ async function request(path, { token, headers = {}, body, method = "GET" } = {})
 
   if (!response.ok) {
     const message = payload?.message || "Erro inesperado";
+    if (response.status === 401) {
+      notifyUnauthorized(token, message);
+    }
     throw new Error(message);
   }
 
@@ -45,6 +59,9 @@ export async function apiBlob(path, { token, method = "GET" } = {}) {
     if (contentType.includes("application/json")) {
       const payload = await response.json();
       message = payload?.message || message;
+    }
+    if (response.status === 401) {
+      notifyUnauthorized(token, message);
     }
     throw new Error(message);
   }
@@ -70,3 +87,4 @@ export function apiForm(path, { token, method = "POST", formData } = {}) {
 }
 
 export { buildQuery };
+export { AUTH_UNAUTHORIZED_EVENT };
