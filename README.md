@@ -53,6 +53,7 @@ npm run dev
 - `ATTACHMENTS_DIR=/anexos`
 - `SEED_ADMIN_PASSWORD=Omega@123`
 - `SEED_RH_PASSWORD=Carlos@123`
+- `ECOSYSTEM_SSO_ISSUER`, `ECOSYSTEM_SSO_AUDIENCE` e `ECOSYSTEM_SSO_SHARED_SECRET` para login delegado vindo do Ecossistema
 
 5. O projeto ja possui `railway.toml` com comandos de build/start.
 

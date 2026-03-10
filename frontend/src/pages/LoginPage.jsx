@@ -3,7 +3,7 @@ import { Navigate } from "react-router-dom";
 import { useAuth } from "../components/AuthProvider";
 
 export default function LoginPage() {
-  const { login, isAuthenticated } = useAuth();
+  const { login, isAuthenticated, loading: authLoading, ssoError } = useAuth();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -11,6 +11,17 @@ export default function LoginPage() {
 
   if (isAuthenticated) {
     return <Navigate to="/" replace />;
+  }
+
+  if (authLoading) {
+    return (
+      <div className="login-screen">
+        <div className="login-card">
+          <h1>Controle de Atestados</h1>
+          <p>Validando acesso vindo do Ecossistema...</p>
+        </div>
+      </div>
+    );
   }
 
   async function handleSubmit(e) {
@@ -55,7 +66,7 @@ export default function LoginPage() {
             />
           </label>
 
-          {error && <p className="error-text">{error}</p>}
+          {(error || ssoError) && <p className="error-text">{error || ssoError}</p>}
 
           <button type="submit" className="primary-btn" disabled={loading}>
             {loading ? "Entrando..." : "Entrar"}

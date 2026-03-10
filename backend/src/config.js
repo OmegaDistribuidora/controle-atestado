@@ -16,5 +16,10 @@ module.exports = {
   nodeEnv: process.env.NODE_ENV || "development",
   attachmentsDir: RESOLVED_ATTACHMENTS_DIR,
   fortalezaTz: "America/Fortaleza",
+  ecosystemSso: {
+    issuer: process.env.ECOSYSTEM_SSO_ISSUER || "ecosistema-omega",
+    audience: process.env.ECOSYSTEM_SSO_AUDIENCE || "controle_atestado",
+    sharedSecret: process.env.ECOSYSTEM_SSO_SHARED_SECRET || "",
+  },
 };
 
